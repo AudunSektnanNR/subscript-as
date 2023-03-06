@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Dict, List, Optional, Tuple
 import sys
 
@@ -58,9 +58,6 @@ class Co2VolumeDataAtTimeStep:
     volume_coverage: np.ndarray  # Or volume_extent ?
     volume_actual_co2: np.ndarray
 
-    def total_weight(self) -> np.ndarray:
-        return self.aqu_phase_kg + self.gas_phase_kg
-
 
 @dataclass
 class Co2VolumeData:
@@ -91,11 +88,11 @@ def _fetch_properties(
     prop_names: List
 ) -> Tuple[Dict[str, List[np.ndarray]], List[str]]:
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
-    properties = _read_props(unrst,prop_names)
+    properties = _read_props(unrst, prop_names)
     return properties, dates
 
 def _transform_properties(properties: List,
-                 time: List):
+                          time: List):
     props_dict = {}
     for k in enumerate(properties.keys()):
         props_dict_t = {}
@@ -114,12 +111,16 @@ def _extract_source_data(
     init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> SourceData:
+    print("_extract_source_data()")
     grid = EclGrid(grid_file)
     unrst = EclFile(unrst_file)
     init = EclFile(init_file)
     properties, dates = _fetch_properties(unrst,props)
+    print("Done fetching properties")
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
+    print("Number of active grid cells: " + str(len(active)))
     xyz = [grid.get_xyz(global_index=a) for a in active] #Tuple with (x,y,z) for each cell
+    print("Done xyz")
     cells_x = [coord[0] for coord in xyz]
     cells_y = [coord[1] for coord in xyz]
     zone = None
@@ -190,9 +191,12 @@ def _calculate_co2_mass_from_source_data(
     co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
     water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS
 ) -> Co2MassData:
+    print("_calculate_co2_mass_from_source_data()")
     props_check = list(set([field.name for field in fields(source_data)]).difference(set(['x','y','DATES','VOL','zone'])))
     active_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     active_props = [props_check[i] for i in active_props_idx]
+    print("Available properties:")
+    print(active_props)
 
     if set(['PORV','RPORV']).issubset(set(active_props)):
         active_props.remove('PORV')
@@ -240,7 +244,7 @@ def _calculate_co2_volume_from_source_data(
 def calculate_co2_mass(
     grid_file: str,
     unrst_file: str,
-    init_file: Optional[str] = None
+    init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> Co2MassData:
     props = ["RPORV", "SWAT", "DWAT", "BWAT", "SGAS", "DGAS",
