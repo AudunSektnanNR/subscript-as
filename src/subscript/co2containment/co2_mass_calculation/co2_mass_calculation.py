@@ -31,7 +31,7 @@ class SourceData:
     DGAS: Optional[List[np.ndarray]] = None
     BWAT: Optional[List[np.ndarray]] = None
     BGAS: Optional[List[np.ndarray]] = None
-
+    zone: Optional[np.ndarray] = None
 
 @dataclass
 class Co2MassDataAtTimeStep:
@@ -87,6 +87,7 @@ def _fetch_properties(
     prop_names: List
 ) -> Tuple[Dict[str, List[np.ndarray]], List[str]]:
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
+    properties = _read_props(unrst,prop_names)
     properties = {p:{d[1]: properties[p][d[0]].numpy_copy() 
                      for d in enumerate(dates)} 
                   for p in properties}
@@ -144,7 +145,7 @@ def _extract_source_data(
         properties['PORV'] = {d: PORV[0].numpy_copy()[global_active_idx] for d in dates}
     except KeyError:
         pass
-    properties = _transform_properties(properties,dates)
+    
     sd = SourceData(
         cells_x,
         cells_y,
