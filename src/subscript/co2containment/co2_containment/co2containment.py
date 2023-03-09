@@ -20,7 +20,8 @@ def calculate_out_of_bounds_co2(
     grid_file: str,
     unrst_file: str,
     init_file: str,
-    polygon_file: str,
+    file_containment_polygon: str,
+    file_hazardous_polygon: str,
     compact: bool,
     zone_file: Optional[str] = None,
 ) -> pd.DataFrame:
@@ -28,16 +29,21 @@ def calculate_out_of_bounds_co2(
                                        unrst_file,
                                        init_file,
                                        zone_file)
-    poly = _read_polygon(polygon_file)
-    return calculate_from_co2_mass_data(co2_mass_data, poly, compact)
+    containment_polygon = _read_polygon(file_containment_polygon)
+    hazardous_polygon = _read_polygon(file_hazardous_polygon)
+    return calculate_from_co2_mass_data(co2_mass_data,
+                                        containment_polygon,
+                                        hazardous_polygon,
+                                        compact)
 
 def calculate_from_co2_mass_data(
     co2_mass_data: Co2MassData,
-    polygon: shapely.geometry.Polygon,
+    containment_polygon: shapely.geometry.Polygon,
+    hazardous_polygon: shapely.geometry.Polygon,
     compact: bool,
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     contained_mass = calculate_co2_containment(
-        co2_mass_data, polygon
+        co2_mass_data, containment_polygon, hazardous_polygon
     )
     df = _construct_containment_table(contained_mass)
     if compact:
@@ -66,20 +72,27 @@ def _construct_containment_table(
 
 
 def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
+    print("")
+    print(df)
+    print("")
     df = df.drop("zone", axis=1)
+    # print(df)
+    # print("")
     # Total
     akg = "amount_kg"
     df1 = (
         df
-        .drop(["phase", "inside_boundary"], axis=1)
+        .drop(["phase", "inside_containment_boundary", "outside_boundaries", "inside_hazardous_boundary"], axis=1)
         .groupby(["date"])
         .sum()
         .rename(columns={akg: "total"})
     )
+    # print(df1)
+    # print("")
     # Total by phase
     df2 = (
         df
-        .drop("inside_boundary", axis=1)
+        .drop("inside_containment_boundary", axis=1)
         .groupby(["phase", "date"])
         .sum()
     )
@@ -89,7 +102,7 @@ def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
     df3 = (
         df
         .drop("phase", axis=1)
-        .groupby(["inside_boundary", "date"])
+        .groupby(["inside_containment_boundary", "date"])
         .sum()
     )
     df3a = df3.loc[(True,)].rename(columns={akg: "total_inside"})
@@ -97,13 +110,13 @@ def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
     # Total by containment and phase
     df4 = (
         df
-        .groupby(["phase", "inside_boundary", "date"])
+        .groupby(["phase", "inside_containment_boundary", "date"])
         .sum()
     )
-    df4a = df4.loc["gas", True].rename(columns={akg: "total_gas_inside"})
-    df4b = df4.loc["aqueous", True].rename(columns={akg: "total_aqueous_inside"})
-    df4c = df4.loc["gas", False].rename(columns={akg: "total_gas_outside"})
-    df4d = df4.loc["aqueous", False].rename(columns={akg: "total_aqueous_outside"})
+    df4a = df4.loc["gas", True].rename(columns={akg: "gas_inside"})
+    df4b = df4.loc["aqueous", True].rename(columns={akg: "aqueous_inside"})
+    df4c = df4.loc["gas", False].rename(columns={akg: "gas_outside"})
+    df4d = df4.loc["aqueous", False].rename(columns={akg: "aqueous_outside"})
     # Merge data frames and append normalized values
     total_df = df1.copy()
     for _df in [df2a, df2b, df3a, df3b, df4a, df4b, df4c, df4d]:
@@ -115,7 +128,8 @@ def make_parser():
     pn = pathlib.Path(__file__).name
     parser = argparse.ArgumentParser(pn)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
-    parser.add_argument("polygon", help="Polygon that determines the bounds")
+    parser.add_argument("containment_polygon", help="Polygon that determines the bounds of the containment area")
+    parser.add_argument("hazardous_polygon", help="Polygon that determines the bounds of the hazardous area")
     parser.add_argument("outfile", help="Output filename")
     parser.add_argument("--unrst", help="Path to UNRST file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
@@ -139,7 +153,8 @@ def main(arguments):
         arguments.grid,
         arguments.unrst,
         arguments.init,
-        arguments.polygon,
+        arguments.containment_polygon,
+        arguments.hazardous_polygon,
         arguments.compact,
         arguments.zonefile,
     )
