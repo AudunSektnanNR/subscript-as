@@ -268,6 +268,7 @@ def calculate_co2_mass(
         grid_file, unrst_file, props, init_file, zone_file
     )
     co2_mass_data = _calculate_co2_mass_from_source_data(source_data)
+    print("done with co2_mass")
     return co2_mass_data
 
 
