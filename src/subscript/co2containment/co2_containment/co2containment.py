@@ -82,17 +82,17 @@ def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
     akg = "amount_kg"
     df1 = (
         df
-        .drop(["phase", "inside_containment_boundary", "outside_boundaries", "inside_hazardous_boundary"], axis=1)
+        .drop(["phase", "location"], axis=1)
         .groupby(["date"])
         .sum()
         .rename(columns={akg: "total"})
     )
-    # print(df1)
-    # print("")
+    print(df1)
+    print("")
     # Total by phase
     df2 = (
         df
-        .drop("inside_containment_boundary", axis=1)
+        .drop("location", axis=1)
         .groupby(["phase", "date"])
         .sum()
     )
@@ -102,24 +102,27 @@ def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
     df3 = (
         df
         .drop("phase", axis=1)
-        .groupby(["inside_containment_boundary", "date"])
+        .groupby(["location", "date"])
         .sum()
     )
-    df3a = df3.loc[(True,)].rename(columns={akg: "total_inside"})
-    df3b = df3.loc[(False,)].rename(columns={akg: "total_outside"})
+    df3a = df3.loc[("contained",)].rename(columns={akg: "total_contained"})
+    df3b = df3.loc[("outside",)].rename(columns={akg: "total_outside"})
+    df3c = df3.loc[("hazardous",)].rename(columns={akg: "total_hazardous"})
     # Total by containment and phase
     df4 = (
         df
-        .groupby(["phase", "inside_containment_boundary", "date"])
+        .groupby(["phase", "location", "date"])
         .sum()
     )
-    df4a = df4.loc["gas", True].rename(columns={akg: "gas_inside"})
-    df4b = df4.loc["aqueous", True].rename(columns={akg: "aqueous_inside"})
-    df4c = df4.loc["gas", False].rename(columns={akg: "gas_outside"})
-    df4d = df4.loc["aqueous", False].rename(columns={akg: "aqueous_outside"})
+    df4a = df4.loc["gas", "contained"].rename(columns={akg: "gas_contained"})
+    df4b = df4.loc["aqueous", "contained"].rename(columns={akg: "aqueous_contained"})
+    df4c = df4.loc["gas", "outside"].rename(columns={akg: "gas_outside"})
+    df4d = df4.loc["aqueous", "outside"].rename(columns={akg: "aqueous_outside"})
+    df4e = df4.loc["gas", "hazardous"].rename(columns={akg: "gas_hazardous"})
+    df4f = df4.loc["aqueous", "hazardous"].rename(columns={akg: "aqueous_hazardous"})
     # Merge data frames and append normalized values
     total_df = df1.copy()
-    for _df in [df2a, df2b, df3a, df3b, df4a, df4b, df4c, df4d]:
+    for _df in [df2a, df2b, df3a, df3b, df3c, df4a, df4b, df4c, df4d, df4e, df4f]:
         total_df = total_df.merge(_df, on="date", how="left")
     return total_df.reset_index()
 
