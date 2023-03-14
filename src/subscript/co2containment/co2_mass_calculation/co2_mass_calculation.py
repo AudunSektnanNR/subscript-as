@@ -82,6 +82,7 @@ def _read_props(
     act_props = {k:props_att[k] for k in act_prop_names}
     return act_props
 
+
 def _fetch_properties(
     unrst: EclFile,
     prop_names: List
@@ -104,6 +105,7 @@ def _identify_gas_less_cells(
 def _reduce_properties(properties: List,
                  keep_idx: np.ndarray):
     return {p:{d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
+
 
 def _extract_source_data(
     grid_file: str,
@@ -132,6 +134,7 @@ def _extract_source_data(
     properties = _reduce_properties(properties,~gasless)
 
     xyz = [grid.get_xyz(global_index=a) for a in global_active_idx] #Tuple with (x,y,z) for each cell
+
     print("Done xyz")
     cells_x = [coord[0] for coord in xyz]
     cells_y = [coord[1] for coord in xyz]
@@ -145,7 +148,7 @@ def _extract_source_data(
         properties['PORV'] = {d: PORV[0].numpy_copy()[global_active_idx] for d in dates}
     except KeyError:
         pass
-    
+
     sd = SourceData(
         cells_x,
         cells_y,
@@ -227,6 +230,7 @@ def _calculate_co2_mass_from_source_data(
     else:
         print('Information is not enough to compute CO2 mass')
         exit()
+
 
     if source == 'PFlotran':
         co2_mass_cell = _pflotran_co2mass(source_data,co2_molar_mass,water_molar_mass)
