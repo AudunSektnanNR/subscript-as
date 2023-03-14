@@ -18,21 +18,20 @@ class SourceData:
     x: np.ndarray
     y: np.ndarray
     DATES: List[str]
-    VOL: List[np.ndarray] = None
-    SWAT: List[np.ndarray] = None
-    SGAS: List[np.ndarray] = None
-    RPORV: Optional[np.ndarray] = None
-    PORV: Optional[np.ndarray] = None
-    AMFG: Optional[np.ndarray] = None
-    YMFG: Optional[np.ndarray] = None
-    XMF2: Optional[np.ndarray] = None
-    YMF2: Optional[np.ndarray] = None
-    DWAT: Optional[np.ndarray] = None
-    DGAS: Optional[np.ndarray] = None
-    BWAT: Optional[np.ndarray] = None
-    BGAS: Optional[np.ndarray] = None
+    VOL: Optional[List[np.ndarray]] = None
+    SWAT: Optional[List[np.ndarray]] = None
+    SGAS: Optional[List[np.ndarray]] = None
+    RPORV: Optional[List[np.ndarray]] = None
+    PORV: Optional[List[np.ndarray]] = None
+    AMFG: Optional[List[np.ndarray]] = None
+    YMFG: Optional[List[np.ndarray]] = None
+    XMF2: Optional[List[np.ndarray]] = None
+    YMF2: Optional[List[np.ndarray]] = None
+    DWAT: Optional[List[np.ndarray]] = None
+    DGAS: Optional[List[np.ndarray]] = None
+    BWAT: Optional[List[np.ndarray]] = None
+    BGAS: Optional[List[np.ndarray]] = None
     zone: Optional[np.ndarray] = None
-
 
 @dataclass
 class Co2MassDataAtTimeStep:
@@ -78,31 +77,35 @@ def _read_props(
     unrst: EclFile,
     prop_names: List,
 ) -> List[np.ndarray]:
-    props_att = [_try_prop(unrst,p) for p in prop_names]
-    act_prop_names = [k[1] for k in enumerate(prop_names) if props_att[k[0]] is not None]
-    act_props = [props_att[k[0]] for k in enumerate(prop_names) if props_att[k[0]] is not None]
-    return dict(zip(act_prop_names,act_props))
+    props_att = {p:_try_prop(unrst,p) for p in prop_names}
+    act_prop_names = [k for k in prop_names if props_att[k] is not None]
+    act_props = {k:props_att[k] for k in act_prop_names}
+    return act_props
+
 
 def _fetch_properties(
     unrst: EclFile,
     prop_names: List
 ) -> Tuple[Dict[str, List[np.ndarray]], List[str]]:
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
-    properties = _read_props(unrst, prop_names)
+    properties = _read_props(unrst,prop_names)
+    properties = {p:{d[1]: properties[p][d[0]].numpy_copy() 
+                     for d in enumerate(dates)} 
+                  for p in properties}
     return properties, dates
 
-def _transform_properties(properties: List,
-                          time: List):
-    props_dict = {}
-    for k in enumerate(properties.keys()):
-        props_dict_t = {}
-        for l in enumerate(time):
-            if len(properties[k[1]]) == 1:
-                props_dict_t[l[1]] = properties[k[1]][0]
-            else:
-                props_dict_t[l[1]] = properties[k[1]][l[0]].numpy_copy()
-        props_dict[k[1]] = props_dict_t
-    return props_dict
+def _identify_gas_less_cells(
+    sgases: dict,
+    amfgs: dict
+) -> np.ndarray:
+    gas_less = np.logical_and.reduce([np.abs(sgases[s]) < TRESHOLD_SGAS for s in sgases])
+    gas_less &= np.logical_and.reduce([np.abs(amfgs[a]) < TRESHOLD_AMFG for a in amfgs])
+    return gas_less
+
+def _reduce_properties(properties: List,
+                 keep_idx: np.ndarray):
+    return {p:{d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
+
 
 def _extract_source_data(
     grid_file: str,
@@ -119,21 +122,33 @@ def _extract_source_data(
     print("Done fetching properties")
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
     print("Number of active grid cells: " + str(len(active)))
-    xyz = [grid.get_xyz(global_index=a) for a in active] #Tuple with (x,y,z) for each cell
+    if set(['SGAS','AMFG']).issubset(set([x for x in properties])):
+        gasless = _identify_gas_less_cells(properties["SGAS"], properties["AMFG"])
+    else:
+        if set(['SGAS','YMFG2']).issubset(set([x for x in properties])):
+            gasless = _identify_gas_less_cells(properties["SGAS"], properties["YMG2"])
+        else:
+            exit()
+
+    global_active_idx = active[~gasless]
+    properties = _reduce_properties(properties,~gasless)
+
+    xyz = [grid.get_xyz(global_index=a) for a in global_active_idx] #Tuple with (x,y,z) for each cell
+
     print("Done xyz")
     cells_x = [coord[0] for coord in xyz]
     cells_y = [coord[1] for coord in xyz]
     zone = None
     if zone_file is not None:
         zone = xtgeo.gridproperty_from_file(zone_file, grid=grid)
-        zone = zone.values.data[active]
-    properties['VOL'] = [[grid.cell_volume(global_index=x) for x in active]]
+        zone = zone.values.data[global_active_idx]
+    properties['VOL'] = {d:[grid.cell_volume(global_index=x) for x in global_active_idx] for d in dates}
     try:
         PORV = init["PORV"]
-        properties['PORV'] = [p.numpy_copy()[active] for p in PORV]
+        properties['PORV'] = {d: PORV[0].numpy_copy()[global_active_idx] for d in dates}
     except KeyError:
         pass
-    properties = _transform_properties(properties,dates)
+
     sd = SourceData(
         cells_x,
         cells_y,
@@ -198,19 +213,24 @@ def _calculate_co2_mass_from_source_data(
     print("Available properties:")
     print(active_props)
 
-    if set(['PORV','RPORV']).issubset(set(active_props)):
-        active_props.remove('PORV')
+    if set(['SGAS','SWAT']).issubset(set(active_props)):
+        if set(['PORV','RPORV']).issubset(set(active_props)):
+            active_props.remove('PORV')
 
-    if set(['PORV','SGAS', 'SWAT', 'DGAS', 'DWAT', 'AMFG', 'YMFG']).issubset(set(active_props)):
-        source = 'PFlotran'
-        print('Data Source is ' + source)
-    else:
-        if set(['RPORV', 'SGAS', 'SWAT', 'BGAS', 'BWAT', 'XMF2', 'YMF2']).issubset(set(active_props)):
-            source = 'Eclipse'
+        if set(['PORV','SGAS', 'SWAT', 'DGAS', 'DWAT', 'AMFG', 'YMFG']).issubset(set(active_props)):
+            source = 'PFlotran'
             print('Data Source is ' + source)
         else:
-            print('Information is not enough to compute CO2 mass')
-            exit()
+            if set(['RPORV', 'SGAS', 'SWAT', 'BGAS', 'BWAT', 'XMF2', 'YMF2']).issubset(set(active_props)):
+                source = 'Eclipse'
+                print('Data Source is ' + source)
+            else:
+                print('Information is not enough to compute CO2 mass')
+                exit()
+    else:
+        print('Information is not enough to compute CO2 mass')
+        exit()
+
 
     if source == 'PFlotran':
         co2_mass_cell = _pflotran_co2mass(source_data,co2_molar_mass,water_molar_mass)
@@ -253,6 +273,7 @@ def calculate_co2_mass(
         grid_file, unrst_file, props, init_file, zone_file
     )
     co2_mass_data = _calculate_co2_mass_from_source_data(source_data)
+    print("done with co2_mass")
     return co2_mass_data
 
 
