@@ -21,16 +21,19 @@ def calculate_out_of_bounds_co2(
     unrst_file: str,
     init_file: str,
     file_containment_polygon: str,
-    file_hazardous_polygon: str,
     compact: bool,
     zone_file: Optional[str] = None,
+    file_hazardous_polygon: Optional[str] = None,
 ) -> pd.DataFrame:
     co2_mass_data = calculate_co2_mass(grid_file,
                                        unrst_file,
                                        init_file,
                                        zone_file)
     containment_polygon = _read_polygon(file_containment_polygon)
-    hazardous_polygon = _read_polygon(file_hazardous_polygon)
+    if file_hazardous_polygon is not None:
+        hazardous_polygon = _read_polygon(file_hazardous_polygon)
+    else:
+        hazardous_polygon = None
     return calculate_from_co2_mass_data(co2_mass_data,
                                         containment_polygon,
                                         hazardous_polygon,
@@ -39,7 +42,7 @@ def calculate_out_of_bounds_co2(
 def calculate_from_co2_mass_data(
     co2_mass_data: Co2MassData,
     containment_polygon: shapely.geometry.Polygon,
-    hazardous_polygon: shapely.geometry.Polygon,
+    hazardous_polygon: Union[shapely.geometry.Polygon, None],
     compact: bool,
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     contained_mass = calculate_co2_containment(
@@ -132,12 +135,12 @@ def make_parser():
     parser = argparse.ArgumentParser(pn)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
     parser.add_argument("containment_polygon", help="Polygon that determines the bounds of the containment area")
-    parser.add_argument("hazardous_polygon", help="Polygon that determines the bounds of the hazardous area")
     parser.add_argument("outfile", help="Output filename")
     parser.add_argument("--unrst", help="Path to UNRST file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
     parser.add_argument("--compact", help="Write the output to a single file as compact as possible", action="store_true")
+    parser.add_argument("--hazardous_polygon", help="Polygon that determines the bounds of the hazardous area", default=None)
     return parser
 
 
@@ -157,9 +160,9 @@ def main(arguments):
         arguments.unrst,
         arguments.init,
         arguments.containment_polygon,
-        arguments.hazardous_polygon,
         arguments.compact,
         arguments.zonefile,
+        arguments.hazardous_polygon,
     )
     if isinstance(df, dict):
         of = pathlib.Path(arguments.outfile)
