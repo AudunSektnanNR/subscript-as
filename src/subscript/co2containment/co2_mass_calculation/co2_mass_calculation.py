@@ -125,8 +125,8 @@ def _extract_source_data(
     if set(['SGAS','AMFG']).issubset(set([x for x in properties])):
         gasless = _identify_gas_less_cells(properties["SGAS"], properties["AMFG"])
     else:
-        if set(['SGAS','YMFG2']).issubset(set([x for x in properties])):
-            gasless = _identify_gas_less_cells(properties["SGAS"], properties["YMG2"])
+        if set(['SGAS','YMF2']).issubset(set([x for x in properties])):
+            gasless = _identify_gas_less_cells(properties["SGAS"], properties["YMF2"])
         else:
             exit()
 
@@ -142,7 +142,8 @@ def _extract_source_data(
     if zone_file is not None:
         zone = xtgeo.gridproperty_from_file(zone_file, grid=grid)
         zone = zone.values.data[global_active_idx]
-    properties['VOL'] = {d:[grid.cell_volume(global_index=x) for x in global_active_idx] for d in dates}
+    VOL0 = [grid.cell_volume(global_index=x) for x in global_active_idx]
+    properties['VOL'] = {d:VOL0 for d in dates} 
     try:
         PORV = init["PORV"]
         properties['PORV'] = {d: PORV[0].numpy_copy()[global_active_idx] for d in dates}
