@@ -31,10 +31,10 @@ def calculate_co2_containment(
             c
             for w in co2_mass_data.data_list
             for c in [
-                ContainedCo2(w.date, w.gas_phase_kg[outside].sum(), "gas", False),
-                ContainedCo2(w.date, w.gas_phase_kg[~outside].sum(), "gas", True),
-                ContainedCo2(w.date, w.aqu_phase_kg[outside].sum(), "aqueous", False),
-                ContainedCo2(w.date, w.aqu_phase_kg[~outside].sum(), "aqueous", True),
+                ContainedCo2(w.date, sum(w.gas_phase_kg[outside]), "gas", False),
+                ContainedCo2(w.date, sum(w.gas_phase_kg[~outside]), "gas", True),
+                ContainedCo2(w.date, sum(w.aqu_phase_kg[outside]), "aqueous", False),
+                ContainedCo2(w.date, sum(w.aqu_phase_kg[~outside]), "aqueous", True),
             ]
         ]
     else:
@@ -45,16 +45,16 @@ def calculate_co2_containment(
             for zn, zm in zone_map.items()
             for c in [
                 ContainedCo2(
-                    w.date, w.gas_phase_kg[outside & zm].sum(), "gas", False, zn
+                    w.date, sum(w.gas_phase_kg[outside & zm]), "gas", False, zn
                 ),
                 ContainedCo2(
-                    w.date, w.gas_phase_kg[(~outside) & zm].sum(), "gas", True, zn
+                    w.date, sum(w.gas_phase_kg[(~outside) & zm]), "gas", True, zn
                 ),
                 ContainedCo2(
-                    w.date, w.aqu_phase_kg[outside & zm].sum(), "aqueous", False, zn
+                    w.date, sum(w.aqu_phase_kg[outside & zm]), "aqueous", False, zn
                 ),
                 ContainedCo2(
-                    w.date, w.aqu_phase_kg[(~outside) & zm].sum(), "aqueous", True, zn
+                    w.date, sum(w.aqu_phase_kg[(~outside) & zm]), "aqueous", True, zn
                 ),
             ]
         ]
