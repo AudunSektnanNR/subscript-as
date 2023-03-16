@@ -42,9 +42,9 @@ def calculate_co2_containment(
                 ContainedCo2(w.date, sum(w.gas_phase_kg[is_contained]), "gas", "contained"),
                 ContainedCo2(w.date, sum(w.gas_phase_kg[is_outside]), "gas", "outside"),
                 ContainedCo2(w.date, sum(w.gas_phase_kg[is_hazardous]), "gas", "hazardous"),
-                ContainedCo2(w.date, sum(w.gas_phase_kg[is_contained]), "aqueous", "contained"),
-                ContainedCo2(w.date, sum(w.gas_phase_kg[is_outside]), "aqueous", "outside"),
-                ContainedCo2(w.date, sum(w.gas_phase_kg[is_hazardous]), "aqueous", "hazardous"),
+                ContainedCo2(w.date, sum(w.aqu_phase_kg[is_contained]), "aqueous", "contained"),
+                ContainedCo2(w.date, sum(w.aqu_phase_kg[is_outside]), "aqueous", "outside"),
+                ContainedCo2(w.date, sum(w.aqu_phase_kg[is_hazardous]), "aqueous", "hazardous"),
             ]
         ]
     else:
