@@ -54,15 +54,19 @@ class Co2MassData:
 @dataclass
 class Co2VolumeDataAtTimeStep:
     date: str
-    volume_coverage: np.ndarray  # Or volume_extent ?
-    volume_actual_co2: np.ndarray
-
-
-@dataclass
-class Co2VolumeData:
     x: np.ndarray
     y: np.ndarray
+    volume_coverage: np.ndarray
+    volume_actual_co2: np.ndarray
+
+@dataclass
+class Co2PropertyVolume:
+    property: str
     data_list: List[Co2VolumeDataAtTimeStep]
+        
+@dataclass
+class Co2VolumeData:
+    data_list: List[Co2PropertyVolume]
     zone: Optional[np.ndarray] = None
 
 def _try_prop(unrst:EclFile,
@@ -166,7 +170,7 @@ def _mole_to_mass_fraction(x, m_co2, m_h20):
     return x * m_co2 / (m_h20 + (m_co2 - m_h20) * x)
 
 def cut_threshold(x, threshold):
-    return np.where(x > threshold)
+    return np.where(x > threshold)[0]
 
 def _pflotran_co2mass(source_data,
                      co2_molar_mass=DEFAULT_CO2_MOLAR_MASS,
@@ -255,11 +259,50 @@ def _calculate_co2_mass_from_source_data(
 
 def _calculate_co2_volume_from_source_data(
     source_data: SourceData,
-    co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,  # Not needed ?
-    water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS  # Not needed ?
+    threshold: List,
+    co2_mass_data: Optional[Co2MassData] = None
 ) -> Co2VolumeData:
+    props_check = [x.name for x in fields(source_data) if x.name not in ['x', 'y','real','DATES', 'PORV', 'zone','VOL']]
+    plume_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
+    plume_props_names = [props_check[i] for i in plume_props_idx]
+   
+    properties = {x:getattr(source_data,x) for x in plume_props_names}
+
+    plume_idx = {p:{y:cut_threshold(properties[p][y],t) for y in properties[p]}
+                 for p,t in zip(plume_props_names,threshold)}
+
+    vols_ext = {p:{t:[source_data.VOL[t][idx] for idx in plume_idx[p][t]] for t in plume_idx[p]}
+            for p in plume_idx}
+    
+    vols_co2 = None
+    if co2_mass_data is not None:
+        mass_dates = [getattr(x,'date') for x in co2_mass_data.data_list]
+        vols_co2 = {p:{t:[co2_mass_data.data_list[int(np.where([x==t for x in mass_dates])[0])].gas_phase_kg[idx]*DENS_CO2_GAS +
+                          co2_mass_data.data_list[int(np.where([x == t for x in mass_dates])[0])].aqu_phase_kg[
+                              idx] * DENS_CO2_WAT
+                          for idx in plume_idx[p][t]] for t in plume_idx[p]}
+                    for p in plume_idx}
+
+    coords_x = {p:{t:[source_data.x[idx] for idx in plume_idx[p][t]] for t in plume_idx[p]}
+                for p in plume_idx}
+
+    coords_y = {p:{t:[source_data.y[idx] for idx in plume_idx[p][t]] for t in plume_idx[p]}
+                for p in plume_idx}
+
+    co2_vol_data = Co2VolumeData([Co2PropertyVolume(
+        p,
+        [Co2VolumeDataAtTimeStep(
+        t,
+        coords_x[p][t],
+        coords_y[p][t],
+        vols_ext[p][t],
+        vols_co2[p][t]) for t in vols_co2[p]]
+    ) for p in vols_co2],
+        source_data.zone
+    )    
+    
     # Similar to _calculate_co2_mass_from_source_data
-    pass
+    return co2_vol_data
 
 
 def calculate_co2_mass(
@@ -281,14 +324,15 @@ def calculate_co2_mass(
 def calculate_co2_volume(
     grid_file: str,
     unrst_file: str,
-    init_file: str,
-    poro_keyword: str,
+    threshold: List,
     zone_file: Optional[str] = None
 ) -> Co2VolumeData:
+    props = ["SGAS", "AMFG", "XMF2"]
     source_data = _extract_source_data(
-        grid_file, unrst_file, init_file, poro_keyword, zone_file
+        grid_file, unrst_file, props, zone_file = zone_file
     )
-    co2_volume_data = _calculate_co2_volume_from_source_data(source_data)
+    co2_mass_data = calculate_co2_mass(grid_file,unrst_file)
+    co2_volume_data = _calculate_co2_volume_from_source_data(source_data,threshold,co2_mass_data,co2_density)
     return co2_volume_data
 
 
