@@ -12,7 +12,7 @@ import shapely.geometry
 from subscript.co2containment.co2_mass_calculation.co2_mass_calculation import calculate_co2_volume
 from subscript.co2containment.co2_mass_calculation.co2_mass_calculation import Co2VolumeData
 
-from .calculate import (
+from subscript.co2containment.co2_mass_calculation.calculate import (
     calculate_co2_containment_vol,
     ContainedCo2Vol,
 )
