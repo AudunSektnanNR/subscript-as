@@ -104,7 +104,7 @@ def _fetch_properties(
 
 def _identify_gas_less_cells(
     sgases: dict,
-    amfgs: dict
+    amfgs: dict,
     threshold: List
 ) -> np.ndarray:
     TRESHOLD_SGAS = threshold[0]
