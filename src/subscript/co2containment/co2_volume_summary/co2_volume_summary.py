@@ -17,6 +17,7 @@ from subscript.co2containment.co2_containment.calculate import (
     ContainedCo2Vol,
 )
 
+threshold = [0.2,0.005]
 def calculate_out_of_bounds_co2(
     grid_file: str,
     unrst_file: str,
