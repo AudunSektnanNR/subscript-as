@@ -17,19 +17,20 @@ from subscript.co2containment.co2_containment.calculate import (
     ContainedCo2Vol,
 )
 
-threshold = [0.2,0.005]
 def calculate_out_of_bounds_co2(
     grid_file: str,
     unrst_file: str,
     init_file: str,
     file_containment_polygon: str,
     compact: bool,
+    vol_type: str,
     zone_file: Optional[str] = None,
     file_hazardous_polygon: Optional[str] = None,
 ) -> pd.DataFrame:
     co2_volume_data = calculate_co2_volume(grid_file,
                                        unrst_file,
-				       threshold,
+				       vol_type,
+			 	       init_file,
                                        zone_file)
     containment_polygon = _read_polygon(file_containment_polygon)
     if file_hazardous_polygon is not None:
@@ -39,24 +40,26 @@ def calculate_out_of_bounds_co2(
     return calculate_from_co2_volume_data(co2_volume_data,
                                         containment_polygon,
                                         hazardous_polygon,
-                                        compact)
+                                        compact,
+					vol_type)
 
 def calculate_from_co2_volume_data(
     co2_volume_data: Co2VolumeData,
     containment_polygon: shapely.geometry.Polygon,
     hazardous_polygon: Union[shapely.geometry.Polygon, None],
     compact: bool,
+    vol_type: str
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     contained_volume = calculate_co2_containment_vol(
-        co2_volume_data, containment_polygon, hazardous_polygon
+        co2_volume_data, containment_polygon, hazardous_polygon, vol_type
     )
     df = _construct_containment_table_vol(contained_volume)
     if compact:
         return df
     if co2_volume_data.zone is None:
-        return _merge_date_rows_vol(df)
+        return _merge_date_rows_vol(df,vol_type)
     return {
-        z: _merge_date_rows(g)
+        z: _merge_date_rows(g,vol_type) 
         for z, g in df.groupby("zone")
     }
 
@@ -80,7 +83,8 @@ def _construct_containment_table_vol(
                               how = "inner"),
                      records)
 
-def _merge_date_rows_vol(df: pd.DataFrame) -> pd.DataFrame:
+def _merge_date_rows_vol(df: pd.DataFrame,
+			 vol_type: str) -> pd.DataFrame:
     print("")
     print(df)
     print("")
@@ -155,6 +159,7 @@ def make_parser():
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
     parser.add_argument("--compact", help="Write the output to a single file as compact as possible", action="store_true")
+    parser.add_argument("--vol_type",help="Volumetric extent or actual CO2 volume",default="None")
     parser.add_argument("--hazardous_polygon", help="Polygon that determines the bounds of the hazardous area", default=None)
     return parser
 
@@ -176,6 +181,7 @@ def main(arguments):
         arguments.init,
         arguments.containment_polygon,
         arguments.compact,
+	arguments.vol_type,
         arguments.zonefile,
         arguments.hazardous_polygon,
     )
