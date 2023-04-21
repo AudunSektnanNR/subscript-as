@@ -84,7 +84,7 @@ def _construct_containment_table_vol(
                      records)
 
 def _merge_date_rows_vol(df: pd.DataFrame,
-			 vol_type: str) -> pd.DataFrame:
+                         vol_type: str) -> pd.DataFrame:
     print("")
     print(df)
     print("")
@@ -93,59 +93,81 @@ def _merge_date_rows_vol(df: pd.DataFrame,
     # print("")
     # Total
     am3_SGAS = "amount_m3_SGAS"
-    am3_AMFG = "amount_m3_AMFG"
-    df1 = (
-        df
-	.drop(df[df["phase"]=="extent"].index)
-        .drop(["phase", "location"], axis=1)
-        .groupby(["date"])
-        .sum()
-        .rename(columns={am3_SGAS: "total_SGAS",am3_AMFG: "total_AMFG"})
-    )
-    print(df1)
-    print("")
-    # Total by phase
-    df2 = (
-        df
-        .drop("location", axis=1)
-        .groupby(["phase", "date"])
-        .sum()
-    )
-    df2a = df2.loc["gas"].rename(columns={am3_SGAS: "total_gas_SGAS",am3_AMFG: "total_gas_AMFG"})
-    df2b = df2.loc["aqueous"].rename(columns={am3_SGAS: "total_aqueous_SGAS",am3_AMFG: "total_aqueous_AMFG"})
-    df2c = df2.loc["extent"].rename(columns={am3_SGAS: "total_extent_SGAS",am3_AMFG: "total_extent_AMFG"})
-    # Total by containment
-    df3 = (
-        df
-        .drop(df[df["phase"]=="extent"].index)
-        .drop("phase", axis=1)
-        .groupby(["location", "date"])
-        .sum()
-    )
-    df3a = df3.loc[("contained",)].rename(columns={am3_SGAS: "total_contained_SGAS",am3_AMFG: "total_contained_AMFG"})
-    df3b = df3.loc[("outside",)].rename(columns={am3_SGAS: "total_outside_SGAS",am3_AMFG: "total_outside_AMFG"})
-    df3c = df3.loc[("hazardous",)].rename(columns={am3_SGAS: "total_hazardous_SGAS",am3_AMFG: "total_hazardous_AMFG"})
-    print(df3a)
-    # Total by containment and phase
-    df4 = (
-        df
-        .groupby(["phase", "location", "date"])
-        .sum()
-    )
-    df4a = df4.loc["gas", "contained"].rename(columns={am3_SGAS: "gas_contained_SGAS",am3_AMFG: "gas_contained_AMFG"})
-    df4b = df4.loc["aqueous", "contained"].rename(columns={am3_SGAS: "aqueous_contained_SGAS",am3_AMFG: "aqueous_contained_AMFG"})
-    df4c = df4.loc["gas", "outside"].rename(columns={am3_SGAS: "gas_outside_SGAS",am3_AMFG: "gas_outside_AMFG"})
-    df4d = df4.loc["aqueous", "outside"].rename(columns={am3_SGAS: "aqueous_outside_SGAS",am3_AMFG: "aqueous_outside_AMFG"})
-    df4e = df4.loc["gas", "hazardous"].rename(columns={am3_SGAS: "gas_hazardous_SGAS",am3_AMFG: "gas_hazardous_AMFG"})
-    df4f = df4.loc["aqueous", "hazardous"].rename(columns={am3_SGAS: "aqueous_hazardous_SGAS",am3_AMFG: "aqueous_hazardous_AMFG"})
-    df4g = df4.loc["extent", "contained"].rename(columns={am3_SGAS: "extent_contained_SGAS",am3_AMFG: "extent_contained_AMFG"})
-    df4h = df4.loc["extent", "outside"].rename(columns={am3_SGAS: "extent_outside_SGAS",am3_AMFG: "extent_outside_AMFG"})
-    df4i = df4.loc["extent", "hazardous"].rename(columns={am3_SGAS: "extent_hazardous_SGAS",am3_AMFG: "extent_hazardous_AMFG"})
-    print(df4a)
-    # Merge data frames and append normalized values
-    total_df = df1.copy()
-    for _df in [df2a, df2b,df2c, df3a, df3b, df3c, df4a, df4b, df4c, df4d, df4e, df4f, df4g, df4h, df4i]:
-        total_df = total_df.merge(_df, on="date", how="left")
+    am3_AMFG = [x for x in ["amount_m3_AMFG","amount_m3_XMF2"] if x in df.columns][0]
+    if vol_type == 'Extent':
+        df1 = (
+            df
+            .drop(["phase", "location"], axis=1)
+            .groupby(["date"])
+            .sum()
+            .rename(columns={am3_SGAS: "total_SGAS", am3_AMFG: "total_AMFG"})
+        )
+        print(df1)
+        print("")
+        # Total by containment
+        df2 = (
+            df
+            .drop("phase", axis=1)
+            .groupby(["location", "date"])
+            .sum()
+        )
+        df2a = df2.loc[("contained",)].rename(
+            columns={am3_SGAS: "total_contained_SGAS", am3_AMFG: "total_contained_AMFG"})
+        df2b = df2.loc[("outside",)].rename(columns={am3_SGAS: "total_outside_SGAS", am3_AMFG: "total_outside_AMFG"})
+        df2c = df2.loc[("hazardous",)].rename(
+            columns={am3_SGAS: "total_hazardous_SGAS", am3_AMFG: "total_hazardous_AMFG"})
+        print(df2a)
+        total_df = df1.copy()
+        for _df in [df2a, df2b, df2c]:
+            total_df = total_df.merge(_df, on="date", how="left")
+    else:
+        if vol_type == 'Actual':
+            df1 = (
+                df
+                .drop(["phase", "location"], axis=1)
+                .groupby(["date"])
+                .sum()
+                .rename(columns={am3_SGAS: "total_SGAS",am3_AMFG: "total_AMFG"})
+            )
+            print(df1)
+            print("")
+            # Total by phase
+            df2 = (
+                df
+                .drop("location", axis=1)
+                .groupby(["phase", "date"])
+                .sum()
+            )
+            df2a = df2.loc["gas"].rename(columns={am3_SGAS: "total_gas_SGAS",am3_AMFG: "total_gas_AMFG"})
+            df2b = df2.loc["aqueous"].rename(columns={am3_SGAS: "total_aqueous_SGAS",am3_AMFG: "total_aqueous_AMFG"})
+            # Total by containment
+            df3 = (
+                df
+                .drop("phase", axis=1)
+                .groupby(["location", "date"])
+                .sum()
+            )
+            df3a = df3.loc[("contained",)].rename(columns={am3_SGAS: "total_contained_SGAS",am3_AMFG: "total_contained_AMFG"})
+            df3b = df3.loc[("outside",)].rename(columns={am3_SGAS: "total_outside_SGAS",am3_AMFG: "total_outside_AMFG"})
+            df3c = df3.loc[("hazardous",)].rename(columns={am3_SGAS: "total_hazardous_SGAS",am3_AMFG: "total_hazardous_AMFG"})
+            print(df3a)
+            # Total by containment and phase
+            df4 = (
+                df
+                .groupby(["phase", "location", "date"])
+                .sum()
+            )
+            df4a = df4.loc["gas", "contained"].rename(columns={am3_SGAS: "gas_contained_SGAS",am3_AMFG: "gas_contained_AMFG"})
+            df4b = df4.loc["aqueous", "contained"].rename(columns={am3_SGAS: "aqueous_contained_SGAS",am3_AMFG: "aqueous_contained_AMFG"})
+            df4c = df4.loc["gas", "outside"].rename(columns={am3_SGAS: "gas_outside_SGAS",am3_AMFG: "gas_outside_AMFG"})
+            df4d = df4.loc["aqueous", "outside"].rename(columns={am3_SGAS: "aqueous_outside_SGAS",am3_AMFG: "aqueous_outside_AMFG"})
+            df4e = df4.loc["gas", "hazardous"].rename(columns={am3_SGAS: "gas_hazardous_SGAS",am3_AMFG: "gas_hazardous_AMFG"})
+            df4f = df4.loc["aqueous", "hazardous"].rename(columns={am3_SGAS: "aqueous_hazardous_SGAS",am3_AMFG: "aqueous_hazardous_AMFG"})
+            print(df4a)
+            # Merge data frames and append normalized values
+            total_df = df1.copy()
+            for _df in [df2a, df2b, df3a, df3b, df3c, df4a, df4b, df4c, df4d, df4e, df4f]:
+                total_df = total_df.merge(_df, on="date", how="left")
     return total_df.reset_index()
 
 
