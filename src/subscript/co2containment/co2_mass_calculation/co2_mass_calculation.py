@@ -392,7 +392,7 @@ def calculate_co2_volume(
     grid_file: str,
     unrst_file: str,
     vol_type: str,
-    init_file: Optional[str] = None
+    init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> Co2VolumeData:
     props = ["RPORV","SGAS", "AMFG","YMFG","XMF2","YMF2","PORV","DGAS","BGAS","DWAT","BWAT"]
