@@ -32,6 +32,7 @@ def calculate_out_of_bounds_co2(
 				       vol_type,
 			 	       init_file,
                                        zone_file)
+    print("Done with CO2 volume calculations")
     containment_polygon = _read_polygon(file_containment_polygon)
     if file_hazardous_polygon is not None:
         hazardous_polygon = _read_polygon(file_hazardous_polygon)
@@ -70,18 +71,11 @@ def _read_polygon(polygon_file: str) -> shapely.geometry.Polygon:
 def _construct_containment_table_vol(
     contained_co2: List[ContainedCo2Vol],
 ) -> pd.DataFrame:
-    records = {p:pd.DataFrame.from_records([
+    records = pd.DataFrame.from_records([
         dataclasses.asdict(c)
-        for c in contained_co2[p]
+        for c in contained_co2
 	])
-	for p in contained_co2
-    }
-    records = [records[p].rename(columns={'amount_m3':'amount_m3_'+p}) for p in records]
-    return reduce(lambda left, right:     # Merge DataFrames in list
-                     pd.merge(left , right,
-                              on = ["date","phase","location","zone"],
-                              how = "inner"),
-                     records)
+    return records
 
 def _merge_date_rows_vol(df: pd.DataFrame,
                          vol_type: str) -> pd.DataFrame:
@@ -92,15 +86,14 @@ def _merge_date_rows_vol(df: pd.DataFrame,
     # print(df)
     # print("")
     # Total
-    am3_SGAS = "amount_m3_SGAS"
-    am3_AMFG = [x for x in ["amount_m3_AMFG","amount_m3_XMF2"] if x in df.columns][0]
+    am3 = "amount_m3"
     if vol_type == 'Extent':
         df1 = (
             df
             .drop(["phase", "location"], axis=1)
             .groupby(["date"])
             .sum()
-            .rename(columns={am3_SGAS: "total_SGAS", am3_AMFG: "total_AMFG"})
+            .rename(columns={am3: "total"})
         )
         print(df1)
         print("")
@@ -112,22 +105,22 @@ def _merge_date_rows_vol(df: pd.DataFrame,
             .sum()
         )
         df2a = df2.loc[("contained",)].rename(
-            columns={am3_SGAS: "total_contained_SGAS", am3_AMFG: "total_contained_AMFG"})
-        df2b = df2.loc[("outside",)].rename(columns={am3_SGAS: "total_outside_SGAS", am3_AMFG: "total_outside_AMFG"})
+            columns={am3: "total_contained"})
+        df2b = df2.loc[("outside",)].rename(columns={am3: "total_outside"})
         df2c = df2.loc[("hazardous",)].rename(
-            columns={am3_SGAS: "total_hazardous_SGAS", am3_AMFG: "total_hazardous_AMFG"})
+            columns={am3: "total_hazardous"})
         print(df2a)
         total_df = df1.copy()
         for _df in [df2a, df2b, df2c]:
             total_df = total_df.merge(_df, on="date", how="left")
     else:
-        if vol_type == 'Actual':
+        if vol_type == 'Actual' or vol_type == 'Actual_simple':
             df1 = (
                 df
                 .drop(["phase", "location"], axis=1)
                 .groupby(["date"])
                 .sum()
-                .rename(columns={am3_SGAS: "total_SGAS",am3_AMFG: "total_AMFG"})
+                .rename(columns={am3: "total"})
             )
             print(df1)
             print("")
@@ -138,8 +131,8 @@ def _merge_date_rows_vol(df: pd.DataFrame,
                 .groupby(["phase", "date"])
                 .sum()
             )
-            df2a = df2.loc["gas"].rename(columns={am3_SGAS: "total_gas_SGAS",am3_AMFG: "total_gas_AMFG"})
-            df2b = df2.loc["aqueous"].rename(columns={am3_SGAS: "total_aqueous_SGAS",am3_AMFG: "total_aqueous_AMFG"})
+            df2a = df2.loc["gas"].rename(columns={am3: "total_gas"})
+            df2b = df2.loc["aqueous"].rename(columns={am3: "total_aqueous"})
             # Total by containment
             df3 = (
                 df
@@ -147,9 +140,9 @@ def _merge_date_rows_vol(df: pd.DataFrame,
                 .groupby(["location", "date"])
                 .sum()
             )
-            df3a = df3.loc[("contained",)].rename(columns={am3_SGAS: "total_contained_SGAS",am3_AMFG: "total_contained_AMFG"})
-            df3b = df3.loc[("outside",)].rename(columns={am3_SGAS: "total_outside_SGAS",am3_AMFG: "total_outside_AMFG"})
-            df3c = df3.loc[("hazardous",)].rename(columns={am3_SGAS: "total_hazardous_SGAS",am3_AMFG: "total_hazardous_AMFG"})
+            df3a = df3.loc[("contained",)].rename(columns={am3: "total_contained"})
+            df3b = df3.loc[("outside",)].rename(columns={am3: "total_outside"})
+            df3c = df3.loc[("hazardous",)].rename(columns={am3: "total_hazardous"})
             print(df3a)
             # Total by containment and phase
             df4 = (
@@ -157,19 +150,18 @@ def _merge_date_rows_vol(df: pd.DataFrame,
                 .groupby(["phase", "location", "date"])
                 .sum()
             )
-            df4a = df4.loc["gas", "contained"].rename(columns={am3_SGAS: "gas_contained_SGAS",am3_AMFG: "gas_contained_AMFG"})
-            df4b = df4.loc["aqueous", "contained"].rename(columns={am3_SGAS: "aqueous_contained_SGAS",am3_AMFG: "aqueous_contained_AMFG"})
-            df4c = df4.loc["gas", "outside"].rename(columns={am3_SGAS: "gas_outside_SGAS",am3_AMFG: "gas_outside_AMFG"})
-            df4d = df4.loc["aqueous", "outside"].rename(columns={am3_SGAS: "aqueous_outside_SGAS",am3_AMFG: "aqueous_outside_AMFG"})
-            df4e = df4.loc["gas", "hazardous"].rename(columns={am3_SGAS: "gas_hazardous_SGAS",am3_AMFG: "gas_hazardous_AMFG"})
-            df4f = df4.loc["aqueous", "hazardous"].rename(columns={am3_SGAS: "aqueous_hazardous_SGAS",am3_AMFG: "aqueous_hazardous_AMFG"})
+            df4a = df4.loc["gas", "contained"].rename(columns={am3: "gas_contained"})
+            df4b = df4.loc["aqueous", "contained"].rename(columns={am3: "aqueous_contained"})
+            df4c = df4.loc["gas", "outside"].rename(columns={am3: "gas_outside"})
+            df4d = df4.loc["aqueous", "outside"].rename(columns={am3: "aqueous_outside"})
+            df4e = df4.loc["gas", "hazardous"].rename(columns={am3: "gas_hazardous"})
+            df4f = df4.loc["aqueous", "hazardous"].rename(columns={am3: "aqueous_hazardous"})
             print(df4a)
             # Merge data frames and append normalized values
             total_df = df1.copy()
             for _df in [df2a, df2b, df3a, df3b, df3c, df4a, df4b, df4c, df4d, df4e, df4f]:
                 total_df = total_df.merge(_df, on="date", how="left")
     return total_df.reset_index()
-
 
 def make_parser():
     pn = pathlib.Path(__file__).name
