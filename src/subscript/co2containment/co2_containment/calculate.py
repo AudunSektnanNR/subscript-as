@@ -25,7 +25,7 @@ class ContainedCo2:
 class ContainedCo2Vol:
     date: str
     amount_m3: float
-    phase: Literal["gas", "aqueous","extent"]
+    phase: Literal["gas", "aqueous"]
     location: Literal["contained", "outside", "hazardous"]
     zone: Optional[str] = None
     def __post_init__(self):
@@ -94,87 +94,84 @@ def calculate_co2_containment_vol(
     hazardous_polygon: Union[Polygon, MultiPolygon, None],
     vol_type: str
 ) -> List[ContainedCo2Vol]:
-    is_contained = {p.property:{t.date:_calculate_containment(t.x, t.y, containment_polygon) for t in p.data_list} for p in co2_vol_data.data_list}
+    is_contained = _calculate_containment(co2_vol_data.x, co2_vol_data.y, containment_polygon)
     if hazardous_polygon is not None:
-	    is_hazardous = {p.property:{t.date:list(_calculate_containment(t.x, t.y, hazardous_polygon))for t in p.data_list} for p in co2_vol_data.data_list}
+	    is_hazardous = _calculate_containment(co2_vol_data.x, co2_vol_data.y, hazardous_polygon)
     else:
-        is_hazardous = {p:{t: [False]*len(is_contained[p][t]) for t in is_contained[p]} for p in is_contained}
+        is_hazardous = np.array([False]*len(is_contained))
     # Count as hazardous if the two boundaries overlap:
-    is_contained = {p:{t:[x if not y else False for x,y in zip(is_contained[p][t],is_hazardous[p][t])]
-                       for t in is_contained[p]}
-                    for p in is_contained}
-    is_outside = {p:{t:[not x and not y for x, y in zip(is_contained[p][t],is_hazardous[p][t])]
-                     for t in is_contained[p]}
-                  for p in is_contained}
+    is_contained = [x if not y else False for x,y in zip(is_contained,is_hazardous)]
+    is_outside = [not x and not y for x, y in zip(is_contained,is_hazardous)]
     if co2_vol_data.zone is None:
         if vol_type == 'Extent':
-            return {p.property: [
+            return [
                 c
-                for w in p.data_list
+                for w in co2_vol_data.data_list
                 for c in [
-                    ContainedCo2Vol(w.date, sum(w.volume_coverage[is_contained[p.property][w.date]]), "extent", "contained"),
-                    ContainedCo2Vol(w.date, sum(w.volume_coverage[is_outside[p.property][w.date]]), "extent", "outside"),
-                    ContainedCo2Vol(w.date, sum(w.volume_coverage[is_hazardous[p.property][w.date]]), "extent", "hazardous"),
-                ]] for p in co2_vol_data.data_list}
+                    ContainedCo2Vol(w.date, sum(w.volume_coverage[is_contained]), "extent", "contained"),
+                    ContainedCo2Vol(w.date, sum(w.volume_coverage[is_outside]), "extent", "outside"),
+                    ContainedCo2Vol(w.date, sum(w.volume_coverage[is_hazardous]), "extent", "hazardous"),
+                ]]
         else:
-            if vol_type == 'Actual':
-                return {p.property: [
+            if vol_type == 'Actual' or vol_type == 'Actual_simple':
+                return [
                     c
-                    for w in p.data_list
+                    for w in co2_vol_data.data_list
                     for c in [
-                        ContainedCo2Vol(w.date, sum(w.gas_phase_m3[is_contained[p.property][w.date]]), "gas", "contained"),
-                        ContainedCo2Vol(w.date, sum(w.gas_phase_m3[is_outside[p.property][w.date]]), "gas", "outside"),
-                        ContainedCo2Vol(w.date, sum(w.gas_phase_m3[is_hazardous[p.property][w.date]]), "gas", "hazardous"),
-                        ContainedCo2Vol(w.date, sum(w.aqu_phase_m3[is_contained[p.property][w.date]]), "aqueous", "contained"),
-                        ContainedCo2Vol(w.date, sum(w.aqu_phase_m3[is_outside[p.property][w.date]]), "aqueous", "outside"),
-                        ContainedCo2Vol(w.date, sum(w.aqu_phase_m3[is_hazardous[p.property][w.date]]), "aqueous", "hazardous"),
-                    ]] for p in co2_vol_data.data_list}
+                        ContainedCo2Vol(w.date, sum(w.gas_phase_m3[is_contained]), "gas", "contained"),
+                        ContainedCo2Vol(w.date, sum(w.gas_phase_m3[is_outside]), "gas", "outside"),
+                        ContainedCo2Vol(w.date, sum(w.gas_phase_m3[is_hazardous]), "gas", "hazardous"),
+                        ContainedCo2Vol(w.date, sum(w.aqu_phase_m3[is_contained]), "aqueous", "contained"),
+                        ContainedCo2Vol(w.date, sum(w.aqu_phase_m3[is_outside]), "aqueous", "outside"),
+                        ContainedCo2Vol(w.date, sum(w.aqu_phase_m3[is_hazardous]), "aqueous", "hazardous"),
+                    ]]
     else:
         zone_map = {z: co2_vol_data.zone == z for z in np.unique(co2_vol_data.zone)}
         if vol_type == 'Extent':
-            return {p.property: [
+            return [
                 c
-                for w in p.data_list
+                for w in co2_vol_data.data_list
                 for zn, zm in zone_map.items()
                 for c in [
                     ContainedCo2Vol(
-                        w.date, sum(w.volume_coverage[is_contained[p.property][w.date] & zm]), "gas", "contained", zn
+                        w.date, sum(w.volume_coverage[is_contained & zm]), "gas", "contained", zn
                     ),
                     ContainedCo2Vol(
-                        w.date, sum(w.volume_coverage[(is_outside[p.property][w.date]) & zm]), "gas", "outside", zn
+                        w.date, sum(w.volume_coverage[is_outside & zm]), "gas", "outside", zn
                     ),
                     ContainedCo2Vol(
-                        w.date, sum(w.volume_coverage[(is_hazardous[p.property][w.date]) & zm]), "gas", "hazardous", zn
+                        w.date, sum(w.volume_coverage[is_hazardous & zm]), "gas", "hazardous", zn
                     ),
                 ]
-                ] for p in co2_vol_data.data_list}
+                ]
         else:
-            if vol_type == 'Actual':
-                return {p.property: [
+            if vol_type == 'Actual' or vol_type == 'Actual_simple':
+                return [
                     c
-                    for w in p.data_list
+                    for w in co2_vol_data.data_list
                     for zn, zm in zone_map.items()
                     for c in [
                         ContainedCo2Vol(
-                            w.date, sum(w.gas_phase_m3[is_contained[p.property][w.date] & zm]), "gas", "contained", zn
+                            w.date, sum(w.gas_phase_m3[is_contained & zm]), "gas", "contained", zn
                         ),
                         ContainedCo2Vol(
-                            w.date, sum(w.gas_phase_m3[(is_outside[p.property][w.date]) & zm]), "gas", "outside", zn
+                            w.date, sum(w.gas_phase_m3[is_outside & zm]), "gas", "outside", zn
                         ),
                         ContainedCo2Vol(
-                            w.date, sum(w.gas_phase_m3[(is_hazardous[p.property][w.date]) & zm]), "gas", "hazardous", zn
+                            w.date, sum(w.gas_phase_m3[is_hazardous & zm]), "gas", "hazardous", zn
                         ),
                         ContainedCo2Vol(
-                            w.date, sum(w.aqu_phase_m3[is_contained[p.property][w.date] & zm]), "aqueous", "contained", zn
+                            w.date, sum(w.aqu_phase_m3[is_contained & zm]), "aqueous", "contained", zn
                         ),
                         ContainedCo2Vol(
-                            w.date, sum(w.aqu_phase_m3[(is_outside[p.property][w.date]) & zm]), "aqueous", "outside", zn
+                            w.date, sum(w.aqu_phase_m3[is_outside & zm]), "aqueous", "outside", zn
                         ),
                         ContainedCo2Vol(
-                            w.date, sum(w.aqu_phase_m3[(is_hazardous[p.property][w.date]) & zm]), "aqueous", "hazardous", zn
+                            w.date, sum(w.aqu_phase_m3[is_hazardous & zm]), "aqueous", "hazardous", zn
                         ),
                     ]
-                    ] for p in co2_vol_data.data_list}
+                    ]
+
 
 
 
