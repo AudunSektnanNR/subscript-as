@@ -27,6 +27,7 @@ def calculate_out_of_bounds_co2(
     zone_file: Optional[str] = None,
     file_hazardous_polygon: Optional[str] = None,
 ) -> pd.DataFrame:
+    print(vol_type)
     co2_volume_data = calculate_co2_volume(grid_file,
                                        unrst_file,
 				       vol_type,

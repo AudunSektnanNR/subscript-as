@@ -10,7 +10,8 @@ from ecl.grid import EclGrid
 DEFAULT_CO2_MOLAR_MASS = 44.0
 DEFAULT_WATER_MOLAR_MASS = 18.0
 DEFAULT_WATER_DENSITY = 1000.0
-threshold = [0.2, 0.005]
+# threshold = [0.2, 0.005]
+threshold = [1e-16, 1e-16]
 
 @dataclass
 class SourceData:
@@ -316,6 +317,7 @@ def _calculate_co2_mass_from_source_data(
 
 def _calculate_co2_volume_from_source_data(
     source_data: SourceData,
+    vol_type: str,
     co2_mass_data: Optional[Co2MassData] = None,
     water_density: float = DEFAULT_WATER_DENSITY,
     co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
