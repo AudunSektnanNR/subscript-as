@@ -348,12 +348,14 @@ def _calculate_co2_volume_from_source_data(
     if vol_type == 'Actual':
         if source == 'PFlotran':
             water_density = np.array([x[1] if 1-(source_data.AMFG[source_data.DATES[0]][x[0]])==1
-            else 999
+            else np.mean(source_data.DWAT[source_data.DATES[0]][
+                np.where([y==0 for y in source_data.AMFG[source_data.DATES[0]]])[0]])
             for x in enumerate(source_data.DWAT[source_data.DATES[0]])])
             molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density,co2_molar_mass, water_molar_mass)
         else:
             water_density = np.array([water_molar_mass*x[1] if 1-(source_data.XMF2[source_data.DATES[0]][x[0]])==1
-            else 999
+            else np.mean(source_data.BWAT[source_data.DATES[0]][
+                np.where([y==0 for y in source_data.XMF2[source_data.DATES[0]]])[0]])
             for x in enumerate(source_data.BWAT[source_data.DATES[0]])])
             molar_vols_co2 = _eclipse_co2_molar_volume(source_data,water_density,water_molar_mass)
         co2_mass = {co2_mass_data.data_list[t].date: [co2_mass_data.data_list[t].aqu_phase_kg,
@@ -386,7 +388,6 @@ def _calculate_co2_volume_from_source_data(
             if vol_type == 'Actual_simple':
                 if source == 'PFlotran':
                     vols_co2 = _pflotran_co2_simple_volume(source_data)
-                    print([len(vols_co2[x]) for x in vols_co2])
                 else:
                     vols_co2 = _eclipse_co2_simple_volume(source_data)
                 vols_co2_simp = {t:[vols_co2[t][0],vols_co2[t][1]] for t in vols_co2}
