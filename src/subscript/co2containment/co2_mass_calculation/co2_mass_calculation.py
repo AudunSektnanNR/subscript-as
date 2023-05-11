@@ -373,7 +373,13 @@ def _calculate_co2_volume_from_source_data(
             source_data.zone)
     else:
         if vol_type == 'Extent':
-            vols_ext = source_data.VOL
+            properties = {x: getattr(source_data, x) for x in plume_props_names}
+            inactive_gas_cells = {x:_identify_gas_less_cells(
+                {x:properties[plume_props_names[0]][x]},
+                {x:properties[plume_props_names[1]][x]}) for x in source_data.DATES}
+            vols_ext = {t: np.array([0]*len(source_data.VOL[t])) for t in source_data.DATES}
+            for t in source_data.DATES:
+                vols_ext[t][~inactive_gas_cells[t]]=np.array(source_data.VOL[t])[~inactive_gas_cells[t]]
             co2_vol_data = Co2VolumeData(
                 source_data.x,
                 source_data.y,
