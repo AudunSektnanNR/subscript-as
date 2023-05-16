@@ -4,8 +4,8 @@ from typing import List, Union, Literal, Optional
 import numpy as np
 from shapely.geometry import Polygon, MultiPolygon
 
-from subscript.co2containment.co2_mass_calculation.co2_mass_calculation import Co2MassData
-from subscript.co2containment.co2_mass_calculation.co2_mass_calculation import Co2VolumeData
+from subscript.co2containment.co2_calculation.co2_calculation import Co2MassData
+from subscript.co2containment.co2_calculation.co2_calculation import Co2VolumeData
 
 
 @dataclass
