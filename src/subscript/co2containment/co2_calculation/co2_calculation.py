@@ -14,10 +14,10 @@ DEFAULT_WATER_DENSITY = 1000.0
 TRESHOLD_SGAS = 1e-16
 TRESHOLD_AMFG = 1e-16
 
-PROPERTIES_NEEDED_FOR_MASS_CALCULATION = ["RPORV", "SWAT", "DWAT", "BWAT", "SGAS", "DGAS",
-                                          "BGAS", "AMFG", "YMFG", "XMF2", "YMF2"]
-PROPERTIES_NEEDED_FOR_VOLUME_CALCULATION = ["RPORV", "SGAS", "AMFG", "YMFG", "XMF2", "YMF2",
-                                            "PORV", "DGAS", "BGAS", "DWAT", "BWAT"]
+PROPERTIES_USED_FOR_MASS_CALCULATION = ["RPORV", "SWAT", "DWAT", "BWAT", "SGAS", "DGAS",
+                                        "BGAS", "AMFG", "YMFG", "XMF2", "YMF2"]
+PROPERTIES_USED_FOR_VOLUME_CALCULATION = ["RPORV", "SGAS", "AMFG", "YMFG", "XMF2", "YMF2",
+                                          "PORV", "DGAS", "BGAS", "DWAT", "BWAT"]
 
 
 class VolumeCalculationType(Enum):
@@ -122,6 +122,10 @@ def _reduce_properties(properties: List,
     return {p:{d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
 
 
+def _is_subset(first: List[str], second: List[str]) -> bool:
+    return all(x in second for x in first)
+
+
 def _extract_source_data(
     grid_file: str,
     unrst_file: str,
@@ -138,9 +142,9 @@ def _extract_source_data(
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
     print("Number of active grid cells: " + str(len(active)))
 
-    if set(['SGAS','AMFG']).issubset(set([x for x in properties])):
+    if _is_subset(['SGAS','AMFG'], properties):
         gasless = _identify_gas_less_cells(properties["SGAS"], properties["AMFG"])
-    elif set(['SGAS','XMF2']).issubset(set([x for x in properties])):
+    elif _is_subset(['SGAS','XMF2'], properties):
         gasless = _identify_gas_less_cells(properties["SGAS"], properties["XMF2"])
     else:
         exit()
@@ -300,15 +304,15 @@ def _calculate_co2_mass_from_source_data(
     print("Available properties:")
     print(active_props)
 
-    if set(['SGAS','SWAT']).issubset(set(active_props)):
-        if set(['PORV','RPORV']).issubset(set(active_props)):
+    if _is_subset(['SGAS','SWAT'], active_props):
+        if _is_subset(['PORV','RPORV'], active_props):
             active_props.remove('PORV')
 
-        if set(['PORV', 'DGAS', 'DWAT', 'AMFG', 'YMFG']).issubset(set(active_props)):
+        if _is_subset(['PORV', 'DGAS', 'DWAT', 'AMFG', 'YMFG'], active_props):
             source = 'PFlotran'
             print('Data Source is ' + source)
         else:
-            if set(['RPORV', 'BGAS', 'BWAT', 'XMF2', 'YMF2']).issubset(set(active_props)):
+            if _is_subset(['RPORV', 'BGAS', 'BWAT', 'XMF2', 'YMF2'], active_props):
                 source = 'Eclipse'
                 print('Data Source is ' + source)
             else:
@@ -348,14 +352,14 @@ def _calculate_co2_volume_from_source_data(
     props_check = [x.name for x in fields(source_data) if x.name not in ['x', 'y', 'real', 'DATES', 'zone','VOL']]
     active_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     active_props = [props_check[i] for i in active_props_idx]
-    if set(['SGAS']).issubset(set(active_props)):
-        if set(['PORV', 'RPORV']).issubset(set(active_props)):
+    if _is_subset(['SGAS'], active_props):
+        if _is_subset(['PORV', 'RPORV'], active_props):
             active_props.remove('PORV')
-        if set(['PORV', 'DGAS', 'DWAT','AMFG']).issubset(set(active_props)):
+        if _is_subset(['PORV', 'DGAS', 'DWAT','AMFG'], active_props):
             source = 'PFlotran'
             print('Data Source is ' + source)
         else:
-            if set(['RPORV', 'BGAS', 'BWAT','XMF2']).issubset(set(active_props)):
+            if _is_subset(['RPORV', 'BGAS', 'BWAT','XMF2'], active_props):
                 source = 'Eclipse'
                 print('Data Source is ' + source)
             else:
@@ -437,7 +441,7 @@ def calculate_co2_mass(
     zone_file: Optional[str] = None
 ) -> Co2MassData:
     source_data = _extract_source_data(
-        grid_file, unrst_file, PROPERTIES_NEEDED_FOR_MASS_CALCULATION, init_file, zone_file
+        grid_file, unrst_file, PROPERTIES_USED_FOR_MASS_CALCULATION, init_file, zone_file
     )
     co2_mass_data = _calculate_co2_mass_from_source_data(source_data)
     print("done with co2_mass")
@@ -451,9 +455,9 @@ def calculate_co2_volume(
     init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> Co2VolumeData:
-    vol_type = _set_volume_type_from_input_string(vol_type_input)
+    vol_type = _set_volume_type_from_input_string(vol_type_input.lower())
     source_data = _extract_source_data(
-        grid_file, unrst_file, PROPERTIES_NEEDED_FOR_VOLUME_CALCULATION, init_file, zone_file
+        grid_file, unrst_file, PROPERTIES_USED_FOR_VOLUME_CALCULATION, init_file, zone_file
     )
     if vol_type == VolumeCalculationType.extent or vol_type == VolumeCalculationType.actual_simple:
         co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type)
