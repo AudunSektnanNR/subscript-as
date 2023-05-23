@@ -10,7 +10,6 @@ from ecl.grid import EclGrid
 DEFAULT_CO2_MOLAR_MASS = 44.0
 DEFAULT_WATER_MOLAR_MASS = 18.0
 DEFAULT_WATER_DENSITY = 1000.0
-# threshold = [0.2, 0.005]
 threshold = [1e-16, 1e-16]
 
 @dataclass
@@ -67,7 +66,7 @@ class Co2VolumeData:
     data_list: List[Co2VolumeDataAtTimeStep]
     zone: Optional[np.ndarray] = None
 
-def _try_prop(unrst:EclFile,
+def _try_prop(unrst: EclFile,
               prop_name: str):
     try:
         prop = unrst[prop_name]
@@ -79,7 +78,7 @@ def _read_props(
     unrst: EclFile,
     prop_names: List,
 ) -> List[np.ndarray]:
-    props_att = {p:_try_prop(unrst,p) for p in prop_names}
+    props_att = {p:_try_prop(unrst, p) for p in prop_names}
     act_prop_names = [k for k in prop_names if props_att[k] is not None]
     act_props = {k:props_att[k] for k in act_prop_names}
     return act_props
@@ -107,7 +106,7 @@ def _identify_gas_less_cells(
     return gas_less
 
 def _reduce_properties(properties: List,
-                 keep_idx: np.ndarray):
+                       keep_idx: np.ndarray):
     return {p:{d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
 
 
@@ -118,7 +117,7 @@ def _extract_source_data(
     init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> SourceData:
-    print("_extract_source_data()")
+    print("Start extracting source data")
     grid = EclGrid(grid_file)
     unrst = EclFile(unrst_file)
     init = EclFile(init_file)
@@ -173,8 +172,8 @@ def cut_threshold(x, threshold):
     return np.where(x > threshold)[0]
 
 def _pflotran_co2mass(source_data,
-                     co2_molar_mass=DEFAULT_CO2_MOLAR_MASS,
-                     water_molar_mass=DEFAULT_WATER_MOLAR_MASS):
+                      co2_molar_mass=DEFAULT_CO2_MOLAR_MASS,
+                      water_molar_mass=DEFAULT_WATER_MOLAR_MASS):
     dates = source_data.DATES
     dwat = source_data.DWAT
     dgas = source_data.DGAS
@@ -210,11 +209,11 @@ def _pflotran_co2_molar_volume(source_data,
                                water_density,
                                co2_molar_mass = DEFAULT_CO2_MOLAR_MASS,
                                water_molar_mass = DEFAULT_WATER_MOLAR_MASS):
-    dates= source_data.DATES
-    dgas= source_data.DGAS
-    dwat= source_data.DWAT
-    ymfg= source_data.YMFG
-    amfg= source_data.AMFG
+    dates = source_data.DATES
+    dgas = source_data.DGAS
+    dwat = source_data.DWAT
+    ymfg = source_data.YMFG
+    amfg = source_data.AMFG
     co2_molar_vol = {}
     for t in dates:
         co2_molar_vol[t] = [(1/amfg[t])*(-water_molar_mass*(1-amfg[t])/(1000*water_density)+
@@ -227,12 +226,12 @@ def _pflotran_co2_molar_volume(source_data,
     return co2_molar_vol
 
 def _eclipse_co2_molar_volume(source_data,water_density = DEFAULT_WATER_DENSITY,
-                               water_molar_mass = DEFAULT_WATER_MOLAR_MASS):
-    dates= source_data.DATES
-    bgas= source_data.BGAS
-    bwat= source_data.BWAT
-    xmf2= source_data.XMF2
-    ymf2= source_data.YMF2
+                              water_molar_mass = DEFAULT_WATER_MOLAR_MASS):
+    dates = source_data.DATES
+    bgas = source_data.BGAS
+    bwat = source_data.BWAT
+    xmf2 = source_data.XMF2
+    ymf2 = source_data.YMF2
     co2_molar_vol = {}
     for t in dates:
         co2_molar_vol[t] = [(1/xmf2[t])*(-water_molar_mass*(1-xmf2[t])/(1000*water_density)+1/(1000*bwat[t])),
@@ -250,7 +249,7 @@ def _pflotran_co2_simple_volume(source_data):
     eff_vols = source_data.PORV
     co2_vol_st1 = {}
     for t in dates:
-        co2_vol_st1[t] = [eff_vols[t]*(1-sgas[t])*amfg[t],eff_vols[t]*sgas[t]*ymfg[t]]
+        co2_vol_st1[t] = [eff_vols[t]*(1-sgas[t])*amfg[t], eff_vols[t]*sgas[t]*ymfg[t]]
     return co2_vol_st1
 
 def _eclipse_co2_simple_volume(source_data):
@@ -261,7 +260,7 @@ def _eclipse_co2_simple_volume(source_data):
     eff_vols = source_data.RPORV
     co2_vol_st1 = {}
     for t in dates:
-        co2_vol_st1[t] = [eff_vols[t]*(1-sgas[t])*xmf2[t],eff_vols[t]*sgas[t]*ymf2[t]]
+        co2_vol_st1[t] = [eff_vols[t]*(1-sgas[t])*xmf2[t], eff_vols[t]*sgas[t]*ymf2[t]]
     return co2_vol_st1
 
 def _calculate_co2_mass_from_source_data(
@@ -296,9 +295,9 @@ def _calculate_co2_mass_from_source_data(
 
 
     if source == 'PFlotran':
-        co2_mass_cell = _pflotran_co2mass(source_data,co2_molar_mass,water_molar_mass)
+        co2_mass_cell = _pflotran_co2mass(source_data, co2_molar_mass, water_molar_mass)
     else:
-        co2_mass_cell = _eclipse_co2mass(source_data,co2_molar_mass)
+        co2_mass_cell = _eclipse_co2mass(source_data, co2_molar_mass)
     co2_mass_data = Co2MassData(
         source_data.x,
         source_data.y,
@@ -319,11 +318,10 @@ def _calculate_co2_volume_from_source_data(
     source_data: SourceData,
     vol_type: str,
     co2_mass_data: Optional[Co2MassData] = None,
-    water_density: float = DEFAULT_WATER_DENSITY,
     co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
-    water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS
+    water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS  # water_density: float = DEFAULT_WATER_DENSITY,
 ) -> Co2VolumeData:
-    props_check = [x.name for x in fields(source_data) if x.name not in ['x', 'y','real','DATES', 'zone','VOL']]
+    props_check = [x.name for x in fields(source_data) if x.name not in ['x', 'y', 'real', 'DATES', 'zone','VOL']]
     active_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     active_props = [props_check[i] for i in active_props_idx]
     if set(['SGAS']).issubset(set(active_props)):
@@ -351,15 +349,15 @@ def _calculate_co2_volume_from_source_data(
             else np.mean(source_data.DWAT[source_data.DATES[0]][
                 np.where([y==0 for y in source_data.AMFG[source_data.DATES[0]]])[0]])
             for x in enumerate(source_data.DWAT[source_data.DATES[0]])])
-            molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density,co2_molar_mass, water_molar_mass)
+            molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_molar_mass, water_molar_mass)
         else:
             water_density = np.array([water_molar_mass*x[1] if 1-(source_data.XMF2[source_data.DATES[0]][x[0]])==1
             else np.mean(source_data.BWAT[source_data.DATES[0]][
                 np.where([y==0 for y in source_data.XMF2[source_data.DATES[0]]])[0]])
             for x in enumerate(source_data.BWAT[source_data.DATES[0]])])
-            molar_vols_co2 = _eclipse_co2_molar_volume(source_data,water_density,water_molar_mass)
+            molar_vols_co2 = _eclipse_co2_molar_volume(source_data, water_density, water_molar_mass)
         co2_mass = {co2_mass_data.data_list[t].date: [co2_mass_data.data_list[t].aqu_phase_kg,
-                                                     co2_mass_data.data_list[t].gas_phase_kg]
+                                                      co2_mass_data.data_list[t].gas_phase_kg]
                     for t in range(0,len(co2_mass_data.data_list))}
         vols_co2 = {t:[a*b/(co2_molar_mass/1000) for a,b in zip(molar_vols_co2[t],co2_mass[t])] for t in co2_mass}
         co2_vol_data = Co2VolumeData(
@@ -399,13 +397,13 @@ def _calculate_co2_volume_from_source_data(
                 vols_co2_simp = {t:[vols_co2[t][0],vols_co2[t][1]] for t in vols_co2}
                 co2_vol_data = Co2VolumeData(
                     source_data.x,
- 		    source_data.y,
+                    source_data.y,
                 [Co2VolumeDataAtTimeStep(
                     t,
                     None,
                     np.array(vols_co2_simp[t][0]),
                     np.array(vols_co2_simp[t][1])) for t in vols_co2_simp],
-                source_data.zone)
+                    source_data.zone)
     return co2_vol_data
 
 def calculate_co2_mass(
@@ -431,15 +429,15 @@ def calculate_co2_volume(
     init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> Co2VolumeData:
-    props = ["RPORV","SGAS", "AMFG","YMFG","XMF2","YMF2","PORV","DGAS","BGAS","DWAT","BWAT"]
+    props = ["RPORV", "SGAS", "AMFG", "YMFG", "XMF2", "YMF2", "PORV", "DGAS", "BGAS", "DWAT", "BWAT"]
     source_data = _extract_source_data(
         grid_file, unrst_file, props, init_file, zone_file
     )
     if vol_type == 'Extent' or vol_type=='Actual_simple':
-        co2_volume_data = _calculate_co2_volume_from_source_data(source_data,vol_type)
+        co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type)
     else:
         if vol_type == 'Actual':
-            co2_mass_data = calculate_co2_mass(grid_file, unrst_file,init_file,zone_file)
+            co2_mass_data = calculate_co2_mass(grid_file, unrst_file, init_file, zone_file)
             co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type, co2_mass_data)
     return co2_volume_data
 
