@@ -1,4 +1,5 @@
 from dataclasses import dataclass, fields
+from enum import Enum
 from typing import Dict, List, Optional, Tuple
 import sys
 
@@ -10,7 +11,20 @@ from ecl.grid import EclGrid
 DEFAULT_CO2_MOLAR_MASS = 44.0
 DEFAULT_WATER_MOLAR_MASS = 18.0
 DEFAULT_WATER_DENSITY = 1000.0
-threshold = [1e-16, 1e-16]
+TRESHOLD_SGAS = 1e-16
+TRESHOLD_AMFG = 1e-16
+
+PROPERTIES_NEEDED_FOR_MASS_CALCULATION = ["RPORV", "SWAT", "DWAT", "BWAT", "SGAS", "DGAS",
+                                          "BGAS", "AMFG", "YMFG", "XMF2", "YMF2"]
+PROPERTIES_NEEDED_FOR_VOLUME_CALCULATION = ["RPORV", "SGAS", "AMFG", "YMFG", "XMF2", "YMF2",
+                                            "PORV", "DGAS", "BGAS", "DWAT", "BWAT"]
+
+
+class VolumeCalculationType(Enum):
+    extent = 0
+    actual = 1
+    actual_simple = 2
+
 
 @dataclass
 class SourceData:
@@ -99,8 +113,6 @@ def _identify_gas_less_cells(
     sgases: dict,
     amfgs: dict
 ) -> np.ndarray:
-    TRESHOLD_SGAS = threshold[0]
-    TRESHOLD_AMFG = threshold[1]
     gas_less = np.logical_and.reduce([np.abs(sgases[s]) < TRESHOLD_SGAS for s in sgases])
     gas_less &= np.logical_and.reduce([np.abs(amfgs[a]) < TRESHOLD_AMFG for a in amfgs])
     return gas_less
@@ -121,7 +133,7 @@ def _extract_source_data(
     grid = EclGrid(grid_file)
     unrst = EclFile(unrst_file)
     init = EclFile(init_file)
-    properties, dates = _fetch_properties(unrst,props)
+    properties, dates = _fetch_properties(unrst, props)
     print("Done fetching properties")
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
     print("Number of active grid cells: " + str(len(active)))
@@ -168,8 +180,21 @@ def _extract_source_data(
 def _mole_to_mass_fraction(x, m_co2, m_h20):
     return x * m_co2 / (m_h20 + (m_co2 - m_h20) * x)
 
-def cut_threshold(x, threshold):
-    return np.where(x > threshold)[0]
+
+# def cut_threshold(x, threshold):
+#     return np.where(x > threshold)[0]
+
+
+def _set_volume_type_from_input_string(vol_type_input: str) -> VolumeCalculationType:
+    if vol_type_input not in VolumeCalculationType._member_names_:
+        print("Illegal volume type: " + vol_type_input)
+        print("Valid options:")
+        for x in VolumeCalculationType._member_names_:
+            print("  * " + x)
+        print("Exiting")
+        exit()
+    return VolumeCalculationType[vol_type_input]
+
 
 def _pflotran_co2mass(source_data,
                       co2_molar_mass=DEFAULT_CO2_MOLAR_MASS,
@@ -316,7 +341,7 @@ def _calculate_co2_mass_from_source_data(
 
 def _calculate_co2_volume_from_source_data(
     source_data: SourceData,
-    vol_type: str,
+    vol_type: VolumeCalculationType,
     co2_mass_data: Optional[Co2MassData] = None,
     co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
     water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS  # water_density: float = DEFAULT_WATER_DENSITY,
@@ -343,7 +368,7 @@ def _calculate_co2_volume_from_source_data(
     props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     props_names = [props_check[i] for i in props_idx]
     plume_props_names = [x for x in props_names if x in ['SGAS','AMFG','XMF2']]
-    if vol_type == 'Actual':
+    if vol_type == VolumeCalculationType.actual:
         if source == 'PFlotran':
             water_density = np.array([x[1] if 1-(source_data.AMFG[source_data.DATES[0]][x[0]])==1
             else np.mean(source_data.DWAT[source_data.DATES[0]][
@@ -370,7 +395,7 @@ def _calculate_co2_volume_from_source_data(
                 np.array(vols_co2[t][1])) for t in co2_mass],
             source_data.zone)
     else:
-        if vol_type == 'Extent':
+        if vol_type == VolumeCalculationType.extent:
             properties = {x: getattr(source_data, x) for x in plume_props_names}
             inactive_gas_cells = {x:_identify_gas_less_cells(
                 {x:properties[plume_props_names[0]][x]},
@@ -386,10 +411,10 @@ def _calculate_co2_volume_from_source_data(
                     np.array(vols_ext[t]),
                     None,
                     None) for t in vols_ext],
-                source_data.zone
+                    source_data.zone
             )
         else:
-            if vol_type == 'Actual_simple':
+            if vol_type == VolumeCalculationType.actual_simple:
                 if source == 'PFlotran':
                     vols_co2 = _pflotran_co2_simple_volume(source_data)
                 else:
@@ -412,10 +437,8 @@ def calculate_co2_mass(
     init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> Co2MassData:
-    props = ["RPORV", "SWAT", "DWAT", "BWAT", "SGAS", "DGAS",
-             "BGAS", "AMFG", "YMFG", "XMF2", "YMF2"]
     source_data = _extract_source_data(
-        grid_file, unrst_file, props, init_file, zone_file
+        grid_file, unrst_file, PROPERTIES_NEEDED_FOR_MASS_CALCULATION, init_file, zone_file
     )
     co2_mass_data = _calculate_co2_mass_from_source_data(source_data)
     print("done with co2_mass")
@@ -425,24 +448,25 @@ def calculate_co2_mass(
 def calculate_co2_volume(
     grid_file: str,
     unrst_file: str,
-    vol_type: str,
+    vol_type_input: str,
     init_file: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> Co2VolumeData:
-    props = ["RPORV", "SGAS", "AMFG", "YMFG", "XMF2", "YMF2", "PORV", "DGAS", "BGAS", "DWAT", "BWAT"]
+    vol_type = _set_volume_type_from_input_string(vol_type_input)
     source_data = _extract_source_data(
-        grid_file, unrst_file, props, init_file, zone_file
+        grid_file, unrst_file, PROPERTIES_NEEDED_FOR_VOLUME_CALCULATION, init_file, zone_file
     )
-    if vol_type == 'Extent' or vol_type=='Actual_simple':
+    if vol_type == VolumeCalculationType.extent or vol_type == VolumeCalculationType.actual_simple:
         co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type)
     else:
-        if vol_type == 'Actual':
+        if vol_type == VolumeCalculationType.actual:
             co2_mass_data = calculate_co2_mass(grid_file, unrst_file, init_file, zone_file)
             co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type, co2_mass_data)
     return co2_volume_data
 
 
 def main(arguments):
+    print("Running main of co2_volume_calculations")
     # Not implemented (yet)
     # Use calculate_co2_mass() or calculate_co2_volume() directly
     pass
