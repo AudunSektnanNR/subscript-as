@@ -137,18 +137,18 @@ def _extract_source_data(
     print("Done fetching properties")
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
     print("Number of active grid cells: " + str(len(active)))
+
     if set(['SGAS','AMFG']).issubset(set([x for x in properties])):
         gasless = _identify_gas_less_cells(properties["SGAS"], properties["AMFG"])
+    elif set(['SGAS','XMF2']).issubset(set([x for x in properties])):
+        gasless = _identify_gas_less_cells(properties["SGAS"], properties["XMF2"])
     else:
-        if set(['SGAS','XMF2']).issubset(set([x for x in properties])):
-            gasless = _identify_gas_less_cells(properties["SGAS"], properties["XMF2"])
-        else:
-            exit()
+        exit()
 
     global_active_idx = active[~gasless]
     properties = _reduce_properties(properties,~gasless)
 
-    xyz = [grid.get_xyz(global_index=a) for a in global_active_idx] #Tuple with (x,y,z) for each cell
+    xyz = [grid.get_xyz(global_index=a) for a in global_active_idx]  # Tuple with (x,y,z) for each cell
 
     print("Done xyz")
     cells_x = [coord[0] for coord in xyz]
@@ -318,7 +318,6 @@ def _calculate_co2_mass_from_source_data(
         print('Information is not enough to compute CO2 mass')
         exit()
 
-
     if source == 'PFlotran':
         co2_mass_cell = _pflotran_co2mass(source_data, co2_molar_mass, water_molar_mass)
     else:
@@ -458,15 +457,13 @@ def calculate_co2_volume(
     )
     if vol_type == VolumeCalculationType.extent or vol_type == VolumeCalculationType.actual_simple:
         co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type)
-    else:
-        if vol_type == VolumeCalculationType.actual:
-            co2_mass_data = calculate_co2_mass(grid_file, unrst_file, init_file, zone_file)
-            co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type, co2_mass_data)
+    elif vol_type == VolumeCalculationType.actual:
+        co2_mass_data = calculate_co2_mass(grid_file, unrst_file, init_file, zone_file)
+        co2_volume_data = _calculate_co2_volume_from_source_data(source_data, vol_type, co2_mass_data)
     return co2_volume_data
 
 
 def main(arguments):
-    print("Running main of co2_volume_calculations")
     # Not implemented (yet)
     # Use calculate_co2_mass() or calculate_co2_volume() directly
     pass
