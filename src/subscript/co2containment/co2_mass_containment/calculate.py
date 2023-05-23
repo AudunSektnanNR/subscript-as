@@ -36,8 +36,7 @@ class ContainedCo2Vol:
 def calculate_co2_containment(
     co2_mass_data: Co2MassData,
     containment_polygon: Union[Polygon, MultiPolygon],
-    hazardous_polygon: Union[Polygon, MultiPolygon, None],
-    vol_type = str
+    hazardous_polygon: Union[Polygon, MultiPolygon, None]
 ) -> List[ContainedCo2]:
     is_contained = _calculate_containment(co2_mass_data.x, co2_mass_data.y, containment_polygon)
     if hazardous_polygon is not None:
@@ -96,7 +95,7 @@ def calculate_co2_containment_vol(
 ) -> List[ContainedCo2Vol]:
     is_contained = _calculate_containment(co2_vol_data.x, co2_vol_data.y, containment_polygon)
     if hazardous_polygon is not None:
-	    is_hazardous = _calculate_containment(co2_vol_data.x, co2_vol_data.y, hazardous_polygon)
+        is_hazardous = _calculate_containment(co2_vol_data.x, co2_vol_data.y, hazardous_polygon)
     else:
         is_hazardous = np.array([False]*len(is_contained))
     # Count as hazardous if the two boundaries overlap:

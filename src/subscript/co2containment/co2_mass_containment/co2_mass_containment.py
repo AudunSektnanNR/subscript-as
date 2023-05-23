@@ -75,12 +75,10 @@ def _construct_containment_table(
 
 
 def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
-    print("")
+    print("\nMerging data rows for data frame:")
     print(df)
     print("")
     df = df.drop("zone", axis=1)
-    # print(df)
-    # print("")
     # Total
     akg = "amount_kg"
     df1 = (
@@ -90,8 +88,6 @@ def _merge_date_rows(df: pd.DataFrame) -> pd.DataFrame:
         .sum()
         .rename(columns={akg: "total"})
     )
-    print(df1)
-    print("")
     # Total by phase
     df2 = (
         df
