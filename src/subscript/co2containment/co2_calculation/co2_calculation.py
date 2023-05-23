@@ -181,7 +181,9 @@ def _extract_source_data(
     return sd
 
 
-def _mole_to_mass_fraction(x, m_co2, m_h20):
+def _mole_to_mass_fraction(x: np.ndarray,
+                           m_co2: float,
+                           m_h20: float) -> np.ndarray:
     return x * m_co2 / (m_h20 + (m_co2 - m_h20) * x)
 
 
@@ -200,9 +202,9 @@ def _set_volume_type_from_input_string(vol_type_input: str) -> VolumeCalculation
     return VolumeCalculationType[vol_type_input]
 
 
-def _pflotran_co2mass(source_data,
-                      co2_molar_mass=DEFAULT_CO2_MOLAR_MASS,
-                      water_molar_mass=DEFAULT_WATER_MOLAR_MASS):
+def _pflotran_co2mass(source_data: SourceData,
+                      co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
+                      water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
     dates = source_data.DATES
     dwat = source_data.DWAT
     dgas = source_data.DGAS
@@ -218,7 +220,8 @@ def _pflotran_co2mass(source_data,
             eff_vols[t] * swat[t] * dwat[t] * _mole_to_mass_fraction(amfg[t], co2_molar_mass, water_molar_mass)]
     return co2_mass
 
-def _eclipse_co2mass(source_data, co2_molar_mass=DEFAULT_CO2_MOLAR_MASS):
+def _eclipse_co2mass(source_data: SourceData,
+                     co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS) -> Dict:
     dates = source_data.DATES
     bgas = source_data.BGAS
     bwat = source_data.BWAT
@@ -234,10 +237,10 @@ def _eclipse_co2mass(source_data, co2_molar_mass=DEFAULT_CO2_MOLAR_MASS):
                        conv_fact * bwat[t] * xmf2[t] * swat[t] * eff_vols[t]]
     return co2_mass
 
-def _pflotran_co2_molar_volume(source_data,
-                               water_density,
-                               co2_molar_mass = DEFAULT_CO2_MOLAR_MASS,
-                               water_molar_mass = DEFAULT_WATER_MOLAR_MASS):
+def _pflotran_co2_molar_volume(source_data: SourceData,
+                               water_density: float,
+                               co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
+                               water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
     dates = source_data.DATES
     dgas = source_data.DGAS
     dwat = source_data.DWAT
@@ -254,8 +257,8 @@ def _pflotran_co2_molar_volume(source_data,
         co2_molar_vol[t][1] = [0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][1], ymfg[t])]
     return co2_molar_vol
 
-def _eclipse_co2_molar_volume(source_data,water_density = DEFAULT_WATER_DENSITY,
-                              water_molar_mass = DEFAULT_WATER_MOLAR_MASS):
+def _eclipse_co2_molar_volume(source_data,water_density: float = DEFAULT_WATER_DENSITY,
+                              water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
     dates = source_data.DATES
     bgas = source_data.BGAS
     bwat = source_data.BWAT
@@ -270,7 +273,7 @@ def _eclipse_co2_molar_volume(source_data,water_density = DEFAULT_WATER_DENSITY,
         co2_molar_vol[t][1] = [0 if x<0 or y==0 else x for x,y in zip(co2_molar_vol[t][1], ymf2[t])]
     return co2_molar_vol
 
-def _pflotran_co2_simple_volume(source_data):
+def _pflotran_co2_simple_volume(source_data: SourceData) -> Dict:
     dates = source_data.DATES
     sgas = source_data.SGAS
     ymfg = source_data.YMFG
@@ -281,7 +284,7 @@ def _pflotran_co2_simple_volume(source_data):
         co2_vol_st1[t] = [eff_vols[t]*(1-sgas[t])*amfg[t], eff_vols[t]*sgas[t]*ymfg[t]]
     return co2_vol_st1
 
-def _eclipse_co2_simple_volume(source_data):
+def _eclipse_co2_simple_volume(source_data: SourceData) -> Dict:
     dates = source_data.DATES
     sgas = source_data.SGAS
     xmf2 = source_data.XMF2
