@@ -20,11 +20,11 @@ def calculate_out_of_bounds_co2(
     grid_file: str,
     unrst_file: str,
     init_file: str,
-    file_containment_polygon: str,
     compact: bool,
     vol_type: str,
-    zone_file: Optional[str] = None,
+    file_containment_polygon: Optional[str] = None,
     file_hazardous_polygon: Optional[str] = None,
+    zone_file: Optional[str] = None,
 ) -> pd.DataFrame:
     print("Calculate out of bounds CO2 for volume type: " + vol_type)
     co2_volume_data = calculate_co2_volume(grid_file,
@@ -33,7 +33,10 @@ def calculate_out_of_bounds_co2(
 				                           init_file,
                                            zone_file)
     print("Done with CO2 volume calculations")
-    containment_polygon = _read_polygon(file_containment_polygon)
+    if file_containment_polygon is not None:
+        containment_polygon = _read_polygon(file_containment_polygon)
+    else:
+        containment_polygon = None
     if file_hazardous_polygon is not None:
         hazardous_polygon = _read_polygon(file_hazardous_polygon)
     else:
@@ -46,7 +49,7 @@ def calculate_out_of_bounds_co2(
 
 def calculate_from_co2_volume_data(
     co2_volume_data: Co2VolumeData,
-    containment_polygon: shapely.geometry.Polygon,
+    containment_polygon: Union[shapely.geometry.Polygon, None],
     hazardous_polygon: Union[shapely.geometry.Polygon, None],
     compact: bool,
     vol_type: str
@@ -158,8 +161,8 @@ def make_parser():
     pn = pathlib.Path(__file__).name
     parser = argparse.ArgumentParser(pn)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
-    parser.add_argument("containment_polygon", help="Polygon that determines the bounds of the containment area")
     parser.add_argument("outfile", help="Output filename")
+    parser.add_argument("--containment_polygon", help="Polygon that determines the bounds of the containment area", default=None)
     parser.add_argument("--unrst", help="Path to UNRST file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
@@ -184,11 +187,11 @@ def main(arguments):
         arguments.grid,
         arguments.unrst,
         arguments.init,
-        arguments.containment_polygon,
         arguments.compact,
 	    arguments.vol_type,
-        arguments.zonefile,
+        arguments.containment_polygon,
         arguments.hazardous_polygon,
+        arguments.zonefile,
     )
     if isinstance(df, dict):
         of = pathlib.Path(arguments.outfile)
