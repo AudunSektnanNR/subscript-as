@@ -22,7 +22,7 @@ PROPERTIES_USED_FOR_VOLUME_CALCULATION = ["RPORV", "SGAS", "AMFG", "YMFG", "XMF2
 PROPERTIES_USED_FOR_CALCULATIONS = ["RPORV","PORV","SGAS","DGAS", "BGAS", "DWAT",
                                     "BWAT", "AMFG", "YMFG", "XMF2", "YMF2"]
 
-class VolumeCalculationType(Enum):
+class CalculationType(Enum):
     extent = 0
     actual = 1
     actual_simple = 2
