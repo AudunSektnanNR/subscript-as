@@ -21,16 +21,14 @@ def calculate_out_of_bounds_co2(
     unrst_file: str,
     init_file: str,
     compact: bool,
+    calc_type_input: str,
     file_containment_polygon: Optional[str] = None,
     file_hazardous_polygon: Optional[str] = None,
-    zone_file: Optional[str] = None,
-    vol_type: Optional[str] = None
+    zone_file: Optional[str] = None
 ) -> pd.DataFrame:
-    if vol_type is not None:
-        print("Calculate out of bounds CO2 for volume type: " + vol_type)
     co2_data = calculate_co2(grid_file,
                                     unrst_file,
-                                    vol_type,
+                                    calc_type_input,
                                     init_file,
                                     zone_file)
     print("Done with CO2 volume calculations")
@@ -46,39 +44,27 @@ def calculate_out_of_bounds_co2(
                                   containment_polygon,
                                   hazardous_polygon,
                                   compact,
-                                  vol_type)
+                                  calc_type_input)
 
 def calculate_from_co2_data(
     co2_data: Co2Data,
     containment_polygon: shapely.geometry.Polygon,
     hazardous_polygon: Union[shapely.geometry.Polygon, None],
     compact: bool,
-    vol_type: Optional[str] = None
+    calc_type: str
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
-    if co2_data.calculation == "mass":
-        contained_co2 = calculate_co2_containment(
-        co2_data, containment_polygon, hazardous_polygon)
-    else:
-        contained_co2 = calculate_co2_containment(
-        co2_data, containment_polygon, hazardous_polygon,vol_type=vol_type)
+    calc_type = _set_calc_type_from_input_string(calc_type_input.lower())
+    contained_co2 = calculate_co2_containment(
+        co2_data, containment_polygon, hazardous_polygon,calc_type=calc_type)
     df = _construct_containment_table(contained_co2)
     if compact:
         return df
-    if co2_mass_data.zone is None:
-        if co2_data.calculation == "mass":
-            return _merge_date_rows(df,co2_data.units)
-        else:
-            return _merge_date_rows(df, co2_data.units,vol_type)
-    if co2_data.calculation == "mass":
-        return {
-        z: _merge_date_rows(g,co2_data.units)
+    if co2_data.zone is None:
+        return _merge_date_rows(df, co2_data.units,calc_type)
+    return {
+        z: _merge_date_rows(g, co2_data.units,calc_type)
         for z, g in df.groupby("zone")
-        }
-    else:
-        return {
-            z: _merge_date_rows(g, co2_data.units,vol_type)
-            for z, g in df.groupby("zone")
-        }
+    }
 
 def _read_polygon(polygon_file: str) -> shapely.geometry.Polygon:
     poly_xy = np.genfromtxt(polygon_file, skip_header=1, delimiter=",")[:, :2]
@@ -95,7 +81,7 @@ def _construct_containment_table(
 
 def _merge_date_rows(df: pd.DataFrame,
                      units: str,
-                     vol_type: Optional[str] = None) -> pd.DataFrame:
+                     calc_type: CalculationType) -> pd.DataFrame:
     print("\nMerging data rows for data frame:")
     print(df)
     print("")
@@ -110,7 +96,7 @@ def _merge_date_rows(df: pd.DataFrame,
         .rename(columns={aunits: "total"})
     )
     total_df = df1.copy()
-    if vol_type == VolumeCalculationType.extent:
+    if calc_type == CalculationType.volume_extent:
         df2 = (
             df
             .drop("phase", axis=1)
@@ -169,7 +155,7 @@ def make_parser():
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
     parser.add_argument("--compact", help="Write the output to a single file as compact as possible", action="store_true")
-    parser.add_argument("--vol_type", help="Volumetric extent or actual CO2 volume", default=None)
+    parser.add_argument("--calc_type_input", help="Calculate mass, volumetric extent, actual or actual_simple CO2 volume", default=None)
     parser.add_argument("--hazardous_polygon", help="Polygon that determines the bounds of the hazardous area", default=None)
 
     return parser
@@ -192,7 +178,7 @@ def main(arguments):
         arguments.containment_polygon,
         arguments.hazardous_polygon,
         arguments.zonefile,
-        arguments.vol_type
+        arguments.calc_type_input
     )
     if isinstance(df, dict):
         of = pathlib.Path(arguments.outfile)
