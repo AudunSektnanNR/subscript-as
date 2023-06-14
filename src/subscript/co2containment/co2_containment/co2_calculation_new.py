@@ -26,6 +26,7 @@ class VolumeCalculationType(Enum):
     extent = 0
     actual = 1
     actual_simple = 2
+    mass = 3
 
 @dataclass
 class SourceData:
@@ -50,8 +51,8 @@ class SourceData:
 @dataclass
 class Co2DataAtTimeStep:
     date: str
-    gas_phase: np.ndarray
     aqu_phase: np.ndarray
+    gas_phase: np.ndarray
     volume_coverage: Optional[np.ndarray] = None
 
     def total_amount(self) -> np.ndarray:
@@ -63,7 +64,6 @@ class Co2Data:
     y: np.ndarray
     data_list: List[Co2DataAtTimeStep]
     units: Literal["kg","m3"]
-    calculation: Literal["mass","volume"]
     zone: Optional[np.ndarray] = None
 
 def _try_prop(unrst: EclFile,
@@ -163,15 +163,15 @@ def _mole_to_mass_fraction(x: np.ndarray,
                            m_h20: float) -> np.ndarray:
     return x * m_co2 / (m_h20 + (m_co2 - m_h20) * x)
 
-def _set_volume_type_from_input_string(vol_type_input: str) -> VolumeCalculationType:
-    if vol_type_input not in VolumeCalculationType._member_names_:
-        print("Illegal volume type: " + vol_type_input)
+def _set_calc_type_from_input_string(calc_type_input: str) -> CalculationType:
+    if calc_type_input not in CalculationType._member_names_:
+        print("Illegal calculation type: " + calc_type_input)
         print("Valid options:")
-        for x in VolumeCalculationType._member_names_:
+        for x in CalculationType._member_names_:
             print("  * " + x)
         print("Exiting")
         exit()
-    return VolumeCalculationType[vol_type_input]
+    return CalculationType[calc_type_input]
 
 def _pflotran_co2mass(source_data: SourceData,
                       co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
@@ -187,8 +187,9 @@ def _pflotran_co2mass(source_data: SourceData,
     co2_mass = {}
     for t in dates:
         co2_mass[t] = [
-            eff_vols[t] * sgas[t] * dgas[t] * _mole_to_mass_fraction(ymfg[t], co2_molar_mass, water_molar_mass),
-            eff_vols[t] * (1-sgas[t]) * dwat[t] * _mole_to_mass_fraction(amfg[t], co2_molar_mass, water_molar_mass)]
+            eff_vols[t] * (1-sgas[t]) * dwat[t] * _mole_to_mass_fraction(amfg[t], co2_molar_mass, water_molar_mass),
+            eff_vols[t] * sgas[t] * dgas[t] * _mole_to_mass_fraction(ymfg[t], co2_molar_mass, water_molar_mass)
+            ]
     return co2_mass
 
 def _eclipse_co2mass(source_data: SourceData,
@@ -204,8 +205,9 @@ def _eclipse_co2mass(source_data: SourceData,
     conv_fact = co2_molar_mass
     co2_mass = {}
     for t in dates:
-        co2_mass[t] = [conv_fact * bgas[t] * ymf2[t] * sgas[t] * eff_vols[t],
-                       conv_fact * bwat[t] * xmf2[t] * swat[t] * eff_vols[t]]
+        co2_mass[t] = [conv_fact * bwat[t] * xmf2[t] * (1-sgas[t]) * eff_vols[t],
+                       conv_fact * bgas[t] * ymf2[t] * sgas[t] * eff_vols[t]
+                       ]
     return co2_mass
 
 def _pflotran_co2_molar_volume(source_data: SourceData,
@@ -274,8 +276,7 @@ def _calculate_co2_from_source_data(
         calculation: str,
         co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
         water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS,
-        co2_mass_data: Optional[Co2Data] = None,
-        vol_type: Optional[VolumeCalculationType]=None) -> Co2Data:
+        calc_type: CalculationType) -> Co2Data:
     props_check = [x.name for x in fields(source_data) if x.name not in ['x', 'y', 'DATES', 'zone', 'VOL']]
     active_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     active_props = [props_check[i] for i in active_props_idx]
@@ -291,7 +292,7 @@ def _calculate_co2_from_source_data(
                 print('Information is not enough to compute CO2 mass')
     else:
         print('Information is not enough to compute CO2 mass')
-    if (calculation == "volume" and vol_type == VolumeCalculationType.actual) or calculation == "mass":
+    if calc_type == CalculationType.volume_actual or calc_type == CalculationType.mass:
         if source == 'PFlotran':
             co2_mass_cell = _pflotran_co2mass(source_data, co2_molar_mass, water_molar_mass)
         else:
@@ -304,61 +305,61 @@ def _calculate_co2_from_source_data(
                 co2_mass_cell[t][0],
                 co2_mass_cell[t][1],
                 None) for t in co2_mass_cell],
-            "kg","mass",
+            "kg",
             source_data.zone
         )
-        if calculation == "volume":
-            #props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
-            #props_names = [props_check[i] for i in props_idx]
-            if vol_type == VolumeCalculationType.actual:
-                if source == 'PFlotran':
-                    water_density = np.array([x[1] if 1 - (source_data.AMFG[source_data.DATES[0]][x[0]]) == 1
-                                              else np.mean(source_data.DWAT[source_data.DATES[0]][
-                                                               np.where(
-                                                                   [y == 0 for y in
-                                                                    source_data.AMFG[source_data.DATES[0]]])[
-                                                                   0]])
-                                              for x in enumerate(source_data.DWAT[source_data.DATES[0]])])
-                    molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_mass_output,
-                                                                water_molar_mass)
-                else:
-                    water_density = np.array(
-                        [water_molar_mass * x[1] if 1 - (source_data.XMF2[source_data.DATES[0]][x[0]]) == 1
-                         else np.mean(source_data.BWAT[source_data.DATES[0]][
-                                          np.where(
-                                              [y == 0 for y in source_data.XMF2[source_data.DATES[0]]])[
-                                              0]])
-                         for x in enumerate(source_data.BWAT[source_data.DATES[0]])])
-                    molar_vols_co2 = _eclipse_co2_molar_volume(source_data, water_density, water_molar_mass)
-                co2_mass = {co2_mass_output.data_list[t].date: [co2_mass_output.data_list[t].aqu_phase_kg,
+        if calc_type != CalculationType.mass:
+          if source == 'PFlotran':
+            water_density = np.array([x[1] if 1 - (source_data.AMFG[source_data.DATES[0]][x[0]]) == 1
+                                      else np.mean(source_data.DWAT[source_data.DATES[0]][
+                                        np.where(
+                                          [y == 0 for y in
+                                           source_data.AMFG[source_data.DATES[0]]])[
+                                          0]])
+                                      for x in enumerate(source_data.DWAT[source_data.DATES[0]])])
+            molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_mass_output,
+                                                        water_molar_mass)
+          else:
+              water_density = np.array(
+                [water_molar_mass * x[1] if 1 - (source_data.XMF2[source_data.DATES[0]][x[0]]) == 1
+                 else np.mean(source_data.BWAT[source_data.DATES[0]][
+                   np.where(
+                     [y == 0 for y in source_data.XMF2[source_data.DATES[0]]])[
+                     0]])
+                 for x in enumerate(source_data.BWAT[source_data.DATES[0]])])
+              molar_vols_co2 = _eclipse_co2_molar_volume(source_data, water_density, water_molar_mass)
+          co2_mass = {co2_mass_output.data_list[t].date: [co2_mass_output.data_list[t].aqu_phase_kg,
                                                               co2_mass_output.data_list[t].gas_phase_kg]
-                            for t in range(0, len(co2_mass_data.data_list))}
-                vols_co2 = {t: [a * b / (co2_molar_mass / 1000) for a, b in zip(molar_vols_co2[t], co2_mass[t])] for t
-                            in
-                            co2_mass}
-                co2_amount = Co2Data(
-                    source_data.x,
-                    source_data.y,
-                    [Co2DataAtTimeStep(
-                        t,
-                        np.array(vols_co2[t][0]),
-                        np.array(vols_co2[t][1]),
-                        None) for t in vols_co2],
-                    "m3","volume",
-                    source_data.zone
-                )
+                          for t in range(0, len(co2_mass_data.data_list))}
+          vols_co2 = {t: [a * b / (co2_molar_mass / 1000) for a, b in zip(molar_vols_co2[t], co2_mass[t])] for t
+                          in
+                          co2_mass}
+          co2_amount = Co2Data(
+                source_data.x,
+                source_data.y,
+                [Co2DataAtTimeStep(
+                  t,
+                  np.array(vols_co2[t][0]),
+                  np.array(vols_co2[t][1]),
+                  None) for t in vols_co2],
+                "m3",
+                source_data.zone
+              )
         else:
             co2_amount = co2_mass_output
     else:
-        if vol_type == VolumeCalculationType.extent:
-            properties = {x: getattr(source_data, x) for x in plume_props_names}
-            inactive_gas_cells = {x: _identify_gas_less_cells({x: properties[plume_props_names[0]][x]},
+        if calc_type == CalculationType.volume_extent:
+          props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
+          props_names = [props_check[i] for i in props_idx]
+          plume_props_names = [x for x in props_names if x in ['SGAS', 'AMFG', 'XMF2']]
+          properties = {x: getattr(source_data, x) for x in plume_props_names}
+          inactive_gas_cells = {x: _identify_gas_less_cells({x: properties[plume_props_names[0]][x]},
                                                               {x: properties[plume_props_names[1]][x]})
                                   for x in source_data.DATES}
-            vols_ext = {t: np.array([0] * len(source_data.VOL[t])) for t in source_data.DATES}
-            for t in source_data.DATES:
-                vols_ext[t][~inactive_gas_cells[t]] = np.array(source_data.VOL[t])[~inactive_gas_cells[t]]
-            co2_amount = Co2Data(
+          vols_ext = {t: np.array([0] * len(source_data.VOL[t])) for t in source_data.DATES}
+          for t in source_data.DATES:
+            vols_ext[t][~inactive_gas_cells[t]] = np.array(source_data.VOL[t])[~inactive_gas_cells[t]]
+          co2_amount = Co2Data(
                 source_data.x,
                 source_data.y,
                 [Co2DataAtTimeStep(
@@ -367,7 +368,7 @@ def _calculate_co2_from_source_data(
                     None,
                     np.array(vols_ext[t])
                 ) for t in vols_ext],
-                "m3","volume",
+                "m3",
                 source_data.zone
             )
         else:
@@ -383,30 +384,21 @@ def _calculate_co2_from_source_data(
                                              np.array(vols_co2_simp[t][0]),
                                              np.array(vols_co2_simp[t][1]),
                                              None) for t in vols_co2_simp],
-                                         "m3","volume",
+                                         "m3",
                                          source_data.zone)
     return co2_amount
 
 def calculate_co2(
         grid_file: str,
         unrst_file: str,
-        vol_type_input: Optional[str] = None,
+        calc_type_input: Optional[str] = None,
         init_file: Optional[str] = None,
         zone_file: Optional[str] = None
 ) -> Co2Data:
     source_data = _extract_source_data(
             grid_file,unrst_file,PROPERTIES_USED_FOR_CALCULATIONS,init_file,zone_file)
-    if vol_type_input is not None:
-        calculation = "volume"
-        vol_type = _set_volume_type_from_input_string(vol_type_input.lower())
-        if vol_type == VolumeCalculationType.extent or vol_type==VolumeCalculationType.actual_simple:
-            co2_data = _calculate_co2_from_source_data(source_data,calculation,vol_type=vol_type)
-        elif vol_type == VolumeCalculationType.actual:
-            co2_mass_data = _calculate_co2_from_source_data(source_data) #ain't work
-            co2_data = _calculate_co2_from_source_data(source_data,vol_type=vol_type,co2_mass_data=co2_mass_data)
-    else:
-        calculation = "mass"
-        co2_data = _calculate_co2_from_source_data(source_data,calculation)
+    calc_type = _set_calc_type_from_input_string(calc_type_input.lower())
+    co2_data = _calculate_co2_from_source_data(source_data, calc_type=calc_type)
     return co2_data
 
 
