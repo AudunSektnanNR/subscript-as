@@ -11,7 +11,6 @@ class ContainedCo2:
     amount: float
     phase: Literal["gas", "aqueous"]
     location: Literal["contained", "outside", "hazardous"]
-    #calculation: Literal["mass","volume"]
     zone: Optional[str] = None
     def __post_init__(self):
         if "-" not in self.date:
@@ -22,7 +21,7 @@ def calculate_co2_containment(
         co2_data: Co2Data,
         containment_polygon: Union[Polygon, MultiPolygon],
         hazardous_polygon: Union[Polygon, MultiPolygon, None],
-        vol_type: Optional[str] = None
+        calc_type: Optional[str] = None
 ) -> List[ContainedCo2]:
     if containment_polygon is not None: # What's with this condition?
         is_contained = _calculate_containment(co2_data.x, co2_data.y, containment_polygon)
@@ -34,7 +33,7 @@ def calculate_co2_containment(
     is_contained = [x if not y else False for x, y in zip(is_contained, is_hazardous)]
     is_outside = [not x and not y for x, y in zip(is_contained, is_hazardous)]
     if co2_data.zone is None:
-        if co2_data.calculation == "volume" and vol_type == "Extent":
+        if calc_type == CalculationType.volume_extent:
             return [
                 c
                 for w in co2_data.data_list
@@ -58,7 +57,7 @@ def calculate_co2_containment(
             ]
     else:
         zone_map = {z: co2_data.zone == z for z in np.unique(co2_data.zone)}
-        if co2_data.calculation == "volume" and vol_type == "Extent":
+        if calc_type == CalculationType.volume_extent:
             return [
                 c
                 for w in co2_data.data_list
