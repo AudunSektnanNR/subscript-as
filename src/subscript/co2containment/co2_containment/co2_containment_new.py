@@ -15,7 +15,7 @@ from .co2_calculation_new import(
     _set_calc_type_from_input_string     
 )
 
-from .finalcalc import (
+from .calculate_new import (
     calculate_co2_containment,
     ContainedCo2,
 )
@@ -178,7 +178,7 @@ def main(arguments):
         arguments.unrst,
         arguments.init,
         arguments.compact,
-        arguments.calc_type_input
+        arguments.calc_type_input,
         arguments.containment_polygon,
         arguments.hazardous_polygon,
         arguments.zonefile
