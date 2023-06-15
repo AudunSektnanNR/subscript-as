@@ -8,8 +8,12 @@ import numpy as np
 import pandas as pd
 import shapely.geometry
 
-from subscript.co2containment.co2_calculation.co2_calculation_new import calculate_co2
-from subscript.co2containment.co2_calculation.co2_calculation_new import Co2Data
+from .co2_calculation_new import(
+    calculate_co2,
+    Co2Data,
+    CalculationType,
+    _set_calc_type_from_input_string     
+)
 
 from .finalcalc import (
     calculate_co2_containment,
@@ -51,7 +55,7 @@ def calculate_from_co2_data(
     containment_polygon: shapely.geometry.Polygon,
     hazardous_polygon: Union[shapely.geometry.Polygon, None],
     compact: bool,
-    calc_type: str
+    calc_type_input: str
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     calc_type = _set_calc_type_from_input_string(calc_type_input.lower())
     contained_co2 = calculate_co2_containment(
@@ -87,13 +91,12 @@ def _merge_date_rows(df: pd.DataFrame,
     print("")
     df = df.drop("zone", axis=1)
     # Total
-    aunits = "amount_"+units
     df1 = (
         df
         .drop(["phase", "location"], axis=1)
         .groupby(["date"])
         .sum()
-        .rename(columns={aunits: "total"})
+        .rename(columns={"amount": "total"})
     )
     total_df = df1.copy()
     if calc_type == CalculationType.volume_extent:
@@ -104,10 +107,10 @@ def _merge_date_rows(df: pd.DataFrame,
             .sum()
         )
         df2a = df2.loc[("contained",)].rename(
-            columns={am3: "total_contained"})
-        df2b = df2.loc[("outside",)].rename(columns={aunits: "total_outside"})
+            columns={"amount": "total_contained"})
+        df2b = df2.loc[("outside",)].rename(columns={"amount": "total_outside"})
         df2c = df2.loc[("hazardous",)].rename(
-            columns={aunits: "total_hazardous"})
+            columns={"amount": "total_hazardous"})
         for _df in [df2a, df2b, df2c]:
             total_df = total_df.merge(_df, on="date", how="left")
     else:
@@ -117,8 +120,8 @@ def _merge_date_rows(df: pd.DataFrame,
             .groupby(["phase", "date"])
             .sum()
         )
-        df2a = df2.loc["gas"].rename(columns={aunits: "total_gas"})
-        df2b = df2.loc["aqueous"].rename(columns={aunits: "total_aqueous"})
+        df2a = df2.loc["gas"].rename(columns={"amount": "total_gas"})
+        df2b = df2.loc["aqueous"].rename(columns={"amount": "total_aqueous"})
         # Total by containment
         df3 = (
             df
@@ -126,21 +129,21 @@ def _merge_date_rows(df: pd.DataFrame,
             .groupby(["location", "date"])
             .sum()
         )
-        df3a = df3.loc[("contained",)].rename(columns={aunits: "total_contained"})
-        df3b = df3.loc[("outside",)].rename(columns={aunits: "total_outside"})
-        df3c = df3.loc[("hazardous",)].rename(columns={aunits: "total_hazardous"})
+        df3a = df3.loc[("contained",)].rename(columns={"amount": "total_contained"})
+        df3b = df3.loc[("outside",)].rename(columns={"amount": "total_outside"})
+        df3c = df3.loc[("hazardous",)].rename(columns={"amount": "total_hazardous"})
         # Total by containment and phase
         df4 = (
             df
             .groupby(["phase", "location", "date"])
             .sum()
         )
-        df4a = df4.loc["gas", "contained"].rename(columns={aunits: "gas_contained"})
-        df4b = df4.loc["aqueous", "contained"].rename(columns={aunits: "aqueous_contained"})
-        df4c = df4.loc["gas", "outside"].rename(columns={aunits: "gas_outside"})
-        df4d = df4.loc["aqueous", "outside"].rename(columns={aunits: "aqueous_outside"})
-        df4e = df4.loc["gas", "hazardous"].rename(columns={aunits: "gas_hazardous"})
-        df4f = df4.loc["aqueous", "hazardous"].rename(columns={aunits: "aqueous_hazardous"})
+        df4a = df4.loc["gas", "contained"].rename(columns={"amount": "gas_contained"})
+        df4b = df4.loc["aqueous", "contained"].rename(columns={"amount": "aqueous_contained"})
+        df4c = df4.loc["gas", "outside"].rename(columns={"amount": "gas_outside"})
+        df4d = df4.loc["aqueous", "outside"].rename(columns={"amount": "aqueous_outside"})
+        df4e = df4.loc["gas", "hazardous"].rename(columns={"amount": "gas_hazardous"})
+        df4f = df4.loc["aqueous", "hazardous"].rename(columns={"amount": "aqueous_hazardous"})
         for _df in [df2a, df2b, df3a, df3b, df3c, df4a, df4b, df4c, df4d, df4e, df4f]:
             total_df = total_df.merge(_df, on="date", how="left")
     return total_df.reset_index()
@@ -175,10 +178,10 @@ def main(arguments):
         arguments.unrst,
         arguments.init,
         arguments.compact,
+        arguments.calc_type_input
         arguments.containment_polygon,
         arguments.hazardous_polygon,
-        arguments.zonefile,
-        arguments.calc_type_input
+        arguments.zonefile
     )
     if isinstance(df, dict):
         of = pathlib.Path(arguments.outfile)
