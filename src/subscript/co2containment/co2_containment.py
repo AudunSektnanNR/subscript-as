@@ -8,14 +8,14 @@ import numpy as np
 import pandas as pd
 import shapely.geometry
 
-from .co2_calculation_new import(
+from .co2_calculation import(
     calculate_co2,
     Co2Data,
     CalculationType,
     _set_calc_type_from_input_string     
 )
 
-from .calculate_new import (
+from .calculate import (
     calculate_co2_containment,
     ContainedCo2,
 )

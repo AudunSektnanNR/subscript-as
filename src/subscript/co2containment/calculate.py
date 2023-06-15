@@ -3,8 +3,8 @@ from typing import List, Union, Literal, Optional
 
 import numpy as np
 from shapely.geometry import Polygon, MultiPolygon
-from subscript.co2containment.co2_calculation.co2_calculation_new import Co2Data
-from subscript.co2containment.co2_containment.co2_calculation_new import CalculationType
+from subscript.co2containment.co2_calculation import Co2Data
+from subscript.co2containment.co2_calculation import CalculationType
 
 @dataclass
 class ContainedCo2:
