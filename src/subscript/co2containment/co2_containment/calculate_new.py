@@ -24,7 +24,7 @@ def calculate_co2_containment(
         hazardous_polygon: Union[Polygon, MultiPolygon, None],
         calc_type: CalculationType
 ) -> List[ContainedCo2]:
-    if containment_polygon is not None: # What's with this condition?
+    if containment_polygon is not None: 
         is_contained = _calculate_containment(co2_data.x, co2_data.y, containment_polygon)
     else:
         is_contained = np.array([False]*len(co2_data.x))
