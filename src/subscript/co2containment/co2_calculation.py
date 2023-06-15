@@ -330,7 +330,7 @@ def _calculate_co2_from_source_data(
               molar_vols_co2 = _eclipse_co2_molar_volume(source_data, water_density, water_molar_mass)
           co2_mass = {co2_mass_output.data_list[t].date: [co2_mass_output.data_list[t].aqu_phase,
                                                               co2_mass_output.data_list[t].gas_phase]
-                          for t in range(0, len(co2_mass_data.data_list))}
+                          for t in range(0, len(co2_mass_output.data_list))}
           vols_co2 = {t: [a * b / (co2_molar_mass / 1000) for a, b in zip(molar_vols_co2[t], co2_mass[t])] for t
                           in
                           co2_mass}
