@@ -1,6 +1,6 @@
 from dataclasses import dataclass, fields
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional,Literal, Tuple
 import sys
 
 import numpy as np
@@ -23,9 +23,9 @@ PROPERTIES_USED_FOR_CALCULATIONS = ["RPORV","PORV","SGAS","DGAS", "BGAS", "DWAT"
                                     "BWAT", "AMFG", "YMFG", "XMF2", "YMF2"]
 
 class CalculationType(Enum):
-    extent = 0
-    actual = 1
-    actual_simple = 2
+    volume_extent = 0
+    volume_actual = 1
+    volume_actual_simple = 2
     mass = 3
 
 @dataclass
@@ -273,10 +273,10 @@ def _eclipse_co2_simple_volume(source_data: SourceData) -> Dict:
 
 def _calculate_co2_from_source_data(
         source_data: SourceData,
-        calculation: str,
+        calc_type: CalculationType,
         co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
         water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS,
-        calc_type: CalculationType) -> Co2Data:
+        ) -> Co2Data:
     props_check = [x.name for x in fields(source_data) if x.name not in ['x', 'y', 'DATES', 'zone', 'VOL']]
     active_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     active_props = [props_check[i] for i in active_props_idx]
@@ -317,7 +317,7 @@ def _calculate_co2_from_source_data(
                                            source_data.AMFG[source_data.DATES[0]]])[
                                           0]])
                                       for x in enumerate(source_data.DWAT[source_data.DATES[0]])])
-            molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_mass_output,
+            molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_molar_mass,
                                                         water_molar_mass)
           else:
               water_density = np.array(
@@ -328,8 +328,8 @@ def _calculate_co2_from_source_data(
                      0]])
                  for x in enumerate(source_data.BWAT[source_data.DATES[0]])])
               molar_vols_co2 = _eclipse_co2_molar_volume(source_data, water_density, water_molar_mass)
-          co2_mass = {co2_mass_output.data_list[t].date: [co2_mass_output.data_list[t].aqu_phase_kg,
-                                                              co2_mass_output.data_list[t].gas_phase_kg]
+          co2_mass = {co2_mass_output.data_list[t].date: [co2_mass_output.data_list[t].aqu_phase,
+                                                              co2_mass_output.data_list[t].gas_phase]
                           for t in range(0, len(co2_mass_data.data_list))}
           vols_co2 = {t: [a * b / (co2_molar_mass / 1000) for a, b in zip(molar_vols_co2[t], co2_mass[t])] for t
                           in
@@ -377,9 +377,9 @@ def _calculate_co2_from_source_data(
             else:
                 vols_co2 = _eclipse_co2_simple_volume(source_data)
             vols_co2_simp = {t: [vols_co2[t][0], vols_co2[t][1]] for t in vols_co2}
-            co2_amount = Co2VolumeData(source_data.x,
+            co2_amount = Co2Data(source_data.x,
                                          source_data.y,
-                                         [Co2VolumeDataAtTimeStep(
+                                         [Co2DataAtTimeStep(
                                              t,
                                              np.array(vols_co2_simp[t][0]),
                                              np.array(vols_co2_simp[t][1]),
