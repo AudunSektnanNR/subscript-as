@@ -4,6 +4,7 @@ from typing import List, Union, Literal, Optional
 import numpy as np
 from shapely.geometry import Polygon, MultiPolygon
 from subscript.co2containment.co2_calculation.co2_calculation_new import Co2Data
+from subscript.co2containment.co2_containment.co2_calculation_new import CalculationType
 
 @dataclass
 class ContainedCo2:
@@ -21,7 +22,7 @@ def calculate_co2_containment(
         co2_data: Co2Data,
         containment_polygon: Union[Polygon, MultiPolygon],
         hazardous_polygon: Union[Polygon, MultiPolygon, None],
-        calc_type: Optional[str] = None
+        calc_type: CalculationType
 ) -> List[ContainedCo2]:
     if containment_polygon is not None: # What's with this condition?
         is_contained = _calculate_containment(co2_data.x, co2_data.y, containment_polygon)
