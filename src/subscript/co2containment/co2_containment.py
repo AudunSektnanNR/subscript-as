@@ -162,7 +162,7 @@ def make_parser():
     pn = pathlib.Path(__file__).name
     parser = argparse.ArgumentParser(pn)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
-    parser.add_argument("containment_polygon", help="Polygon that determines the bounds of the containment area")
+    parser.add_argument("containment_polygon", help="Polygon that determines the bounds of the containment area. Can use None as input value, defining all as contained.")
     parser.add_argument("outfile", help="Output filename")
     parser.add_argument("--unrst", help="Path to UNRST file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
