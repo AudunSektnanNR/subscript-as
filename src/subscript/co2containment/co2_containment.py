@@ -174,17 +174,31 @@ def make_parser():
     return parser
 
 
-def process_args(arguments):
+def process_args(arguments: List[str]) -> argparse.Namespace:
     args = make_parser().parse_args(arguments)
     if args.unrst is None:
         args.unrst = args.grid.replace(".EGRID", ".UNRST")
     if args.init is None:
         args.init = args.grid.replace(".EGRID", ".INIT")
+    args.calc_type_input = args.calc_type_input.lower()
     return args
+
+
+def check_input(arguments: argparse.Namespace):
+    if CalculationType.check_for_key(arguments.calc_type_input) == False:
+        error_text = "Illegal calculation type: " + arguments.calc_type_input
+        error_text += "\nValid options:"
+        for x in CalculationType:
+            error_text += "\n  * " + x.name
+        error_text += "\nExiting"
+        raise ValueError(error_text)
 
 
 def main(arguments):
     arguments = process_args(arguments)
+    check_input(arguments)
+    print("-----------")
+    exit()
     df = calculate_out_of_bounds_co2(
         arguments.grid,
         arguments.unrst,

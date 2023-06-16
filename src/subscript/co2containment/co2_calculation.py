@@ -23,6 +23,10 @@ class CalculationType(Enum):
     volume_actual = 2
     volume_actual_simple = 3
 
+    @classmethod
+    def check_for_key(cls, key):
+        return key in cls.__members__
+
 
 @dataclass
 class SourceData:
@@ -173,12 +177,12 @@ def _mole_to_mass_fraction(x: np.ndarray,
 
 
 def _set_calc_type_from_input_string(calc_type_input: str) -> CalculationType:
-    if calc_type_input not in CalculationType._member_names_:
+    if CalculationType.check_for_key(calc_type_input) == False:
         error_text = "Illegal calculation type: " + calc_type_input
         error_text += "\nValid options:"
-        for x in CalculationType._member_names_:
-            error_text += "  * " + x
-        error_text += "Exiting"
+        for x in CalculationType:
+            error_text += "\n  * " + x.name
+        error_text += "\nExiting"
         raise ValueError(error_text)
     return CalculationType[calc_type_input]
 
