@@ -1,5 +1,6 @@
 import argparse
 import dataclasses
+import os
 import pathlib
 import sys
 from typing import Dict, List, Optional, Union
@@ -192,6 +193,25 @@ def check_input(arguments: argparse.Namespace):
             error_text += "\n  * " + x.name
         error_text += "\nExiting"
         raise ValueError(error_text)
+
+    files_not_found =[] 
+    if not os.path.isfile(arguments.grid):
+        files_not_found.append(arguments.grid)
+    if not os.path.isfile(arguments.unrst):
+        files_not_found.append(arguments.unrst)
+    if not os.path.isfile(arguments.init):
+        files_not_found.append(arguments.init)
+    if arguments.zonefile is not None and not os.path.isfile(arguments.zonefile):
+        files_not_found.append(arguments.zonefile)
+    if arguments.containment_polygon is not None and not os.path.isfile(arguments.containment_polygon):
+        files_not_found.append(arguments.containment_polygon)
+    if arguments.hazardous_polygon is not None and not os.path.isfile(arguments.hazardous_polygon):
+        files_not_found.append(arguments.hazardous_polygon)
+    if files_not_found:
+        error_text = "The following file(s) were not found:"
+        for file in files_not_found:
+            error_text += "\n  * " + file
+        raise FileNotFoundError(error_text)
 
 
 def main(arguments):
