@@ -8,17 +8,18 @@ import numpy as np
 import pandas as pd
 import shapely.geometry
 
-from .co2_calculation import(
+from .co2_calculation import (
     calculate_co2,
     Co2Data,
     CalculationType,
-    _set_calc_type_from_input_string     
+    _set_calc_type_from_input_string,
 )
 
 from .calculate import (
     calculate_co2_containment,
     ContainedCo2,
 )
+
 
 def calculate_out_of_bounds_co2(
     grid_file: str,
@@ -31,10 +32,10 @@ def calculate_out_of_bounds_co2(
     zone_file: Optional[str] = None
 ) -> pd.DataFrame:
     co2_data = calculate_co2(grid_file,
-                                    unrst_file,
-                                    calc_type_input,
-                                    init_file,
-                                    zone_file)
+                             unrst_file,
+                             calc_type_input,
+                             init_file,
+                             zone_file)
     print("Done with CO2 volume calculations")
     if file_containment_polygon is not None:
         containment_polygon = _read_polygon(file_containment_polygon)
@@ -45,10 +46,11 @@ def calculate_out_of_bounds_co2(
     else:
         hazardous_polygon = None
     return calculate_from_co2_data(co2_data,
-                                  containment_polygon,
-                                  hazardous_polygon,
-                                  compact,
-                                  calc_type_input)
+                                   containment_polygon,
+                                   hazardous_polygon,
+                                   compact,
+                                   calc_type_input)
+
 
 def calculate_from_co2_data(
     co2_data: Co2Data,
@@ -59,20 +61,26 @@ def calculate_from_co2_data(
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     calc_type = _set_calc_type_from_input_string(calc_type_input.lower())
     contained_co2 = calculate_co2_containment(
-        co2_data, containment_polygon, hazardous_polygon,calc_type=calc_type)
+        co2_data,
+        containment_polygon,
+        hazardous_polygon,
+        calc_type=calc_type
+    )
     df = _construct_containment_table(contained_co2)
     if compact:
         return df
     if co2_data.zone is None:
-        return _merge_date_rows(df, co2_data.units,calc_type)
+        return _merge_date_rows(df, co2_data.units, calc_type)
     return {
-        z: _merge_date_rows(g, co2_data.units,calc_type)
+        z: _merge_date_rows(g, co2_data.units, calc_type)
         for z, g in df.groupby("zone")
     }
+
 
 def _read_polygon(polygon_file: str) -> shapely.geometry.Polygon:
     poly_xy = np.genfromtxt(polygon_file, skip_header=1, delimiter=",")[:, :2]
     return shapely.geometry.Polygon(poly_xy)
+
 
 def _construct_containment_table(
     contained_co2: List[ContainedCo2],
@@ -83,8 +91,9 @@ def _construct_containment_table(
     ]
     return pd.DataFrame.from_records(records)
 
+
 def _merge_date_rows(df: pd.DataFrame,
-                     units: str,
+                     units: str,  # NBNB-AS
                      calc_type: CalculationType) -> pd.DataFrame:
     print("\nMerging data rows for data frame:")
     print(df)
@@ -148,6 +157,7 @@ def _merge_date_rows(df: pd.DataFrame,
             total_df = total_df.merge(_df, on="date", how="left")
     return total_df.reset_index()
 
+
 def make_parser():
     pn = pathlib.Path(__file__).name
     parser = argparse.ArgumentParser(pn)
@@ -158,10 +168,11 @@ def make_parser():
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
     parser.add_argument("--compact", help="Write the output to a single file as compact as possible", action="store_true")
-    parser.add_argument("--calc_type_input", help="Calculate mass, volumetric extent, actual or actual_simple CO2 volume", default=None)
+    parser.add_argument("--calc_type_input", help="CO2 calculation options: mass / volume_extent / volume_actual / volume_actual_simple", default=None)
     parser.add_argument("--hazardous_polygon", help="Polygon that determines the bounds of the hazardous area", default=None)
 
     return parser
+
 
 def process_args(arguments):
     args = make_parser().parse_args(arguments)
@@ -170,6 +181,7 @@ def process_args(arguments):
     if args.init is None:
         args.init = args.grid.replace(".EGRID", ".INIT")
     return args
+
 
 def main(arguments):
     arguments = process_args(arguments)
@@ -192,5 +204,6 @@ def main(arguments):
     else:
         df.to_csv(arguments.outfile, index=False)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main(sys.argv[1:])
