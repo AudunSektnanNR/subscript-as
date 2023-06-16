@@ -168,7 +168,7 @@ def make_parser():
     parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
     parser.add_argument("--compact", help="Write the output to a single file as compact as possible", action="store_true")
-    parser.add_argument("--calc_type_input", help="CO2 calculation options: mass / volume_extent / volume_actual / volume_actual_simple", default=None)
+    parser.add_argument("--calc_type_input", help="CO2 calculation options: mass / volume_extent / volume_actual / volume_actual_simple", default="mass")
     parser.add_argument("--hazardous_polygon", help="Polygon that determines the bounds of the hazardous area", default=None)
 
     return parser
@@ -197,8 +197,6 @@ def check_input(arguments: argparse.Namespace):
 def main(arguments):
     arguments = process_args(arguments)
     check_input(arguments)
-    print("-----------")
-    exit()
     df = calculate_out_of_bounds_co2(
         arguments.grid,
         arguments.unrst,
