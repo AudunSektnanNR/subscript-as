@@ -91,7 +91,7 @@ def _read_props(
 def _fetch_properties(
         unrst: EclFile,
         properties_to_extract: List  # NBNB-AS
-) -> Tuple[Dict[str, List[np.ndarray]], List[str]]:
+) -> Tuple[Dict[str, Dict[str, List[np.ndarray]]], List[str]]:
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
     properties = _read_props(unrst, properties_to_extract)
     properties = {p: {d[1]: properties[p][d[0]].numpy_copy()
@@ -109,7 +109,7 @@ def _identify_gas_less_cells(
     return gas_less
 
 
-def _reduce_properties(properties: List,
+def _reduce_properties(properties: Dict[str, Dict[str, List[np.ndarray]]],
                        keep_idx: np.ndarray):
     return {p: {d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
 
@@ -134,9 +134,9 @@ def _extract_source_data(
 
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
     print("Number of active grid cells: " + str(len(active)))
-    if _is_subset(["SGAS", "AMFG"], properties):  # NBNB-AS: Stemmer type her og under?
+    if _is_subset(["SGAS", "AMFG"], list(properties.keys())):
         gasless = _identify_gas_less_cells(properties["SGAS"], properties["AMFG"])
-    elif _is_subset(["SGAS", "XMF2"], properties):
+    elif _is_subset(["SGAS", "XMF2"], list(properties.keys())):
         gasless = _identify_gas_less_cells(properties["SGAS"], properties["XMF2"])
     else:
         error_text = "CO2 containment calculation failed. Cannot find required properties "
