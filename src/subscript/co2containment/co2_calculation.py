@@ -33,19 +33,19 @@ class SourceData:
     x: np.ndarray
     y: np.ndarray
     DATES: List[str]
-    VOL: Optional[List[np.ndarray]] = None
-    SWAT: Optional[List[np.ndarray]] = None
-    SGAS: Optional[List[np.ndarray]] = None
-    RPORV: Optional[List[np.ndarray]] = None
-    PORV: Optional[List[np.ndarray]] = None
-    AMFG: Optional[List[np.ndarray]] = None
-    YMFG: Optional[List[np.ndarray]] = None
-    XMF2: Optional[List[np.ndarray]] = None
-    YMF2: Optional[List[np.ndarray]] = None
-    DWAT: Optional[List[np.ndarray]] = None
-    DGAS: Optional[List[np.ndarray]] = None
-    BWAT: Optional[List[np.ndarray]] = None
-    BGAS: Optional[List[np.ndarray]] = None
+    VOL: Optional[Dict[str, np.ndarray]] = None
+    SWAT: Optional[Dict[str, np.ndarray]] = None
+    SGAS: Optional[Dict[str, np.ndarray]] = None
+    RPORV: Optional[Dict[str, np.ndarray]] = None
+    PORV: Optional[Dict[str, np.ndarray]] = None
+    AMFG: Optional[Dict[str, np.ndarray]] = None
+    YMFG: Optional[Dict[str, np.ndarray]] = None
+    XMF2: Optional[Dict[str, np.ndarray]] = None
+    YMF2: Optional[Dict[str, np.ndarray]] = None
+    DWAT: Optional[Dict[str, np.ndarray]] = None
+    DGAS: Optional[Dict[str, np.ndarray]] = None
+    BWAT: Optional[Dict[str, np.ndarray]] = None
+    BGAS: Optional[Dict[str, np.ndarray]] = None
     zone: Optional[np.ndarray] = None
 
 
@@ -198,7 +198,7 @@ def _pflotran_co2mass(source_data: SourceData,
     sgas = source_data.SGAS
     eff_vols = source_data.PORV
     co2_mass = {}
-    for t in dates:  # NBNB-AS: Undersoke type av t her og under
+    for t in dates:
         co2_mass[t] = [
             eff_vols[t] * (1-sgas[t]) * dwat[t] * _mole_to_mass_fraction(amfg[t], co2_molar_mass, water_molar_mass),
             eff_vols[t] * sgas[t] * dgas[t] * _mole_to_mass_fraction(ymfg[t], co2_molar_mass, water_molar_mass)
