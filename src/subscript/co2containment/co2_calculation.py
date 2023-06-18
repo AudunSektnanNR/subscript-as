@@ -237,10 +237,12 @@ def _pflotran_co2_molar_volume(source_data: SourceData,
     for t in dates:
         co2_molar_vol[t] = [(1 / amfg[t]) * (-water_molar_mass * (1 - amfg[t]) / (1000 * water_density) +
                                              (co2_molar_mass * amfg[t] + water_molar_mass * (1 - amfg[t])) / (
-                                                         1000 * dwat[t])),
+                                                         1000 * dwat[t]))
+                            if not all(amfg[t]) == 0 else amfg[t],
                             (1 / ymfg[t]) * (-water_molar_mass * (1 - ymfg[t]) / (1000 * water_density) +
                                              (co2_molar_mass * ymfg[t] + water_molar_mass * (1 - ymfg[t])) / (
                                                          1000 * dgas[t]))
+                            if not all(ymfg[t]) == 0 else ymfg[t]
                             ]
         co2_molar_vol[t][0] = [0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][0], amfg[t])]
         co2_molar_vol[t][1] = [0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][1], ymfg[t])]
