@@ -8,6 +8,7 @@ from subscript.co2containment.co2_calculation import (
     SourceData,
     _calculate_co2_data_from_source_data,
     CalculationType,
+    Co2Data,
 )
 
 
@@ -64,13 +65,11 @@ def test_simple_cube_grid(simple_cube_grid, simple_poly):
 
 def test_zoned_simple_cube_grid(simple_cube_grid, simple_poly):
     rs = np.random.RandomState(123)
-    zone = rs.choice([1, 2, 3], size=simple_cube_grid.poro.shape)
-    sd = dataclasses.replace(simple_cube_grid, zone=zone)
-    df = _calculate_co2_data_from_source_data(sd,
-                                              simple_poly,
-                                              False)
-    assert isinstance(df, dict)
-    assert all(
-        len(_df["date"].unique()) == len(simple_cube_grid.dates)
-        for _df in df.values()
-    )
+    zone = rs.choice([1, 2, 3], size=simple_cube_grid.PORV['20300101'].shape)
+    simple_cube_grid.zone = zone
+    co2_data = _calculate_co2_data_from_source_data(simple_cube_grid,
+                                              CalculationType.mass)
+    assert isinstance(co2_data, Co2Data)
+    assert(co2_data.data_list[-1].date == "20490101")
+    assert(co2_data.data_list[-1].gas_phase.sum() == pytest.approx(9585.032869548137))
+    assert(co2_data.data_list[-1].aqu_phase.sum() == pytest.approx(2834.956447728449))
