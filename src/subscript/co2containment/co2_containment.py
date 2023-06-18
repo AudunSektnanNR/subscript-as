@@ -37,7 +37,7 @@ def calculate_out_of_bounds_co2(
                              calc_type_input,
                              init_file,
                              zone_file)
-    print("Done with CO2 volume calculations")
+    print("Done calculating CO2 data for all active grid cells")
     if file_containment_polygon is not None:
         containment_polygon = _read_polygon(file_containment_polygon)
     else:
@@ -61,6 +61,7 @@ def calculate_from_co2_data(
     calc_type_input: str
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     calc_type = _set_calc_type_from_input_string(calc_type_input.lower())
+    print("Calculate contained CO2 using input polygons")
     contained_co2 = calculate_co2_containment(
         co2_data,
         containment_polygon,
@@ -96,9 +97,7 @@ def _construct_containment_table(
 def _merge_date_rows(df: pd.DataFrame,
                      units: str,  # NBNB-AS
                      calc_type: CalculationType) -> pd.DataFrame:
-    print("\nMerging data rows for data frame:")
-    print(df)
-    print("")
+    print("Merging data rows for data frame")
     df = df.drop("zone", axis=1)
     # Total
     df1 = (

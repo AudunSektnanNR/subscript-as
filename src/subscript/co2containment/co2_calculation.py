@@ -131,6 +131,7 @@ def _extract_source_data(
     init = EclFile(init_file)
     properties, dates = _fetch_properties(unrst, props)
     print("Done fetching properties")
+
     active = np.where(grid.export_actnum().numpy_copy() > 0)[0]
     print("Number of active grid cells: " + str(len(active)))
     if _is_subset(["SGAS", "AMFG"], properties):  # NBNB-AS: Stemmer type her og under?
@@ -144,7 +145,6 @@ def _extract_source_data(
     global_active_idx = active[~gasless]
     properties = _reduce_properties(properties, ~gasless)
     xyz = [grid.get_xyz(global_index=a) for a in global_active_idx]  # Tuple with (x,y,z) for each cell
-    print("Done xyz")
     cells_x = np.array([coord[0] for coord in xyz])
     cells_y = np.array([coord[1] for coord in xyz])
     zone = None
