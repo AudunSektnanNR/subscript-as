@@ -4,8 +4,11 @@ import numpy as np
 import pytest
 import shapely.geometry
 
-from subscript.co2containment.calculate import SourceData
-from subscript.co2containment.co2containment import calculate_from_source_data
+from subscript.co2containment.co2_calculation import (
+    SourceData,
+    _calculate_co2_data_from_source_data,
+    CalculationType,
+)
 
 
 @pytest.fixture
@@ -19,23 +22,22 @@ def simple_cube_grid():
     )
     dates = [f"{d}0101" for d in range(2030, 2050)]
     dists = np.sqrt(mx ** 2 + my ** 2 + mz ** 2)
-    gas_saturations = [
-        np.maximum(np.exp(-3 * (dists.flatten() / ((i + 1) / len(dates))) ** 2) - 0.05, 0.0)
-        for i in range(len(dates))
-    ]
+    gas_saturations = {}
+    for i in range(len(dates)):
+        gas_saturations[dates[i]] = np.maximum(np.exp(-3 * (dists.flatten() / ((i + 1) / len(dates))) ** 2) - 0.05, 0.0)
     size = np.prod(dims)
     return SourceData(
         mx.flatten(),
         my.flatten(),
-        poro=np.ones(size) * 0.3,
-        volumes=np.ones(size) * (8 / size),
-        dates=dates,
-        swat=[1 - s for s in gas_saturations],
-        dwat=[np.ones(size) * 1000.0] * len(dates),
-        sgas=gas_saturations,
-        dgas=[np.ones(size) * 100.0] * len(dates),
-        amfg=[np.ones(size) * 0.02 * s for s in gas_saturations],
-        ymfg=[np.ones(size) * 0.99] * len(dates),
+        PORV={date: np.ones(size) * 0.3 for date in dates},
+        VOL={date: np.ones(size) * (8 / size) for date in dates},
+        DATES=dates,
+        DWAT={date: np.ones(size) * 1000.0 for date in dates},
+        SWAT={date: 1 - gas_saturations[date] for date in gas_saturations},
+        SGAS=gas_saturations,
+        DGAS={date: np.ones(size) * 100.0 for date in dates},
+        AMFG={date: np.ones(size) * 0.02 * gas_saturations[date] for date in gas_saturations},
+        YMFG={date: np.ones(size) * 0.99 for date in dates},
     )
 
 
@@ -51,17 +53,22 @@ def simple_poly():
 
 
 def test_simple_cube_grid(simple_cube_grid, simple_poly):
-    df = calculate_from_source_data(simple_cube_grid, simple_poly, True)
-    assert len(df["date"].unique()) == len(simple_cube_grid.dates)
-    totals = df.groupby("date").sum()["amount_kg"]
-    assert np.all(np.diff(totals.values, axis=0) >= 0)
+    co2_data = _calculate_co2_data_from_source_data(simple_cube_grid,
+                                                    CalculationType.mass)
+    assert(len(co2_data.data_list) == len(simple_cube_grid.DATES))
+    assert(co2_data.units == "kg")
+    assert(co2_data.data_list[-1].date == "20490101")
+    assert(co2_data.data_list[-1].gas_phase.sum() == pytest.approx(9585.032869548137))
+    assert(co2_data.data_list[-1].aqu_phase.sum() == pytest.approx(2834.956447728449))
 
 
 def test_zoned_simple_cube_grid(simple_cube_grid, simple_poly):
     rs = np.random.RandomState(123)
     zone = rs.choice([1, 2, 3], size=simple_cube_grid.poro.shape)
     sd = dataclasses.replace(simple_cube_grid, zone=zone)
-    df = calculate_from_source_data(sd, simple_poly, False)
+    df = _calculate_co2_data_from_source_data(sd,
+                                              simple_poly,
+                                              False)
     assert isinstance(df, dict)
     assert all(
         len(_df["date"].unique()) == len(simple_cube_grid.dates)
