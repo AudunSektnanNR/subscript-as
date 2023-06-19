@@ -192,10 +192,24 @@ def test_reek_grid():
         compact=False,
         calc_type_input="mass"
     )
-    print([c for c in table])
     assert(table.total.values[0] == pytest.approx(696171.20388324))
     assert(table.total_gas.values[0] == pytest.approx(7650.233009712884))
     assert(table.total_aqueous.values[0] == pytest.approx(688520.9708735272))
     assert(table.gas_contained.values[0] == pytest.approx(115.98058252427084))
     assert(table.total_hazardous.values[0] == pytest.approx(10282.11650485436))
     assert(table.gas_hazardous.values[0] == pytest.approx(112.99029126213496))
+
+    volumes = _calculate_co2_data_from_source_data(source_data, CalculationType.volume_actual_simple)
+    table2 = calculate_from_co2_data(
+        co2_data=volumes,
+        containment_polygon=reek_poly,
+        hazardous_polygon=reek_poly_hazardous,
+        compact=False,
+        calc_type_input="volume_actual_simple"
+    )
+    assert(table2.total.values[0] == pytest.approx(358.1699999999088))
+    assert(table2.total_gas.values[0] == pytest.approx(35.81700000000973))
+    assert(table2.total_aqueous.values[0] == pytest.approx(322.3529999998991))
+    assert(table2.gas_contained.values[0] == pytest.approx(0.5430000000000004))
+    assert(table2.total_hazardous.values[0] == pytest.approx(5.289999999999996))
+    assert(table2.gas_hazardous.values[0] == pytest.approx(0.5290000000000004))
