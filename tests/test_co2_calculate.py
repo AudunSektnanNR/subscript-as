@@ -68,7 +68,7 @@ def dummy_co2_masses(dummy_co2_grid):
     return _calculate_co2_data_from_source_data(source_data, CalculationType.mass)
 
 
-def _calc_and_compare(poly, grid, masses):
+def _calc_and_compare(poly, masses):
     totals = {m.date: np.sum(m.total_mass()) for m in masses.data_list}
     contained = calculate_from_co2_data(
         co2_data=masses,
@@ -79,13 +79,10 @@ def _calc_and_compare(poly, grid, masses):
     )
     difference = np.sum([x-y for x,y in zip(contained.total.values, list(totals.values()))])
     assert(difference == pytest.approx(0.0, abs=1e-8))
-    assert(contained.gas_contained.values[-1] == pytest.approx(90.262207))
-    assert(contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467))
-    assert(contained.gas_hazardous.values[-1] == pytest.approx(0.0))
-    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(0.0))
+    return contained
 
 
-def test_single_poly_co2_containment(dummy_co2_grid, dummy_co2_masses):
+def test_single_poly_co2_containment(dummy_co2_masses):
     assert len(dummy_co2_masses.data_list) == 10
     poly = shapely.geometry.Polygon([
         [7.1, 7.0],
@@ -94,10 +91,14 @@ def test_single_poly_co2_containment(dummy_co2_grid, dummy_co2_masses):
         [5.1, 9.0],
         [7.1, 7.0],
     ])
-    _calc_and_compare(poly, dummy_co2_grid, dummy_co2_masses)
+    contained = _calc_and_compare(poly, dummy_co2_masses)
+    assert(contained.gas_contained.values[-1] == pytest.approx(90.262207))
+    assert(contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467))
+    assert(contained.gas_hazardous.values[-1] == pytest.approx(0.0))
+    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(0.0))
 
 
-def test_multi_poly_co2_containment(dummy_co2_grid, dummy_co2_masses):
+def test_multi_poly_co2_containment(dummy_co2_masses):
     poly = shapely.geometry.MultiPolygon([
         shapely.geometry.Polygon([
             [7.1, 7.0],
@@ -114,7 +115,11 @@ def test_multi_poly_co2_containment(dummy_co2_grid, dummy_co2_masses):
             [1.0, 1.0],
         ]),
     ])
-    _calc_and_compare(poly, dummy_co2_grid, dummy_co2_masses)
+    contained = _calc_and_compare(poly, dummy_co2_masses)
+    assert(contained.gas_contained.values[-1] == pytest.approx(123.70267352027123))
+    assert(contained.aqueous_contained.values[-1] == pytest.approx(252.79970312163525))
+    assert(contained.gas_hazardous.values[-1] == pytest.approx(0.0))
+    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(0.0))
 
 
 def test_reek_grid():
