@@ -159,6 +159,13 @@ def test_reek_grid():
         [461339 + 1000, 5932377 + 1000],
         [461339, 5932377 + 1000],
     ])
+    reek_poly_hazardous = shapely.geometry.Polygon([
+        [461339 + 1000, 5932377],
+        [461339 + 2000, 5932377],
+        [461339 + 2000, 5932377 + 1000],
+        [461339 + 1000, 5932377 + 1000],
+        [461339 + 1000, 5932377],
+    ])
     grid = xtgeo.grid_from_file(reek_gridfile)
     poro = xtgeo.gridproperty_from_file(
         reek_gridfile.with_suffix(".INIT"), name="PORO", grid=grid
@@ -167,18 +174,28 @@ def test_reek_grid():
     source_data = SourceData(
         x,
         y,
-        np.ones_like(poro) * 0.1,
-        vol,
-        ["2042"],
-        [np.ones_like(poro) * 0.1],
-        [np.ones_like(poro) * 1000.0],
-        [np.ones_like(poro) * 0.1],
-        [np.ones_like(poro) * 100.0],
-        [np.ones_like(poro) * 0.1],
-        [np.ones_like(poro) * 0.1],
+        PORV={"2042": np.ones_like(poro) * 0.1},
+        VOL=vol,
+        DATES=["2042"],
+        SWAT={"2042": np.ones_like(poro) * 0.1},
+        DWAT={"2042": np.ones_like(poro) * 1000.0},
+        SGAS={"2042": np.ones_like(poro) * 0.1},
+        DGAS={"2042": np.ones_like(poro) * 100.0},
+        AMFG={"2042": np.ones_like(poro) * 0.1},
+        YMFG={"2042": np.ones_like(poro) * 0.1},
     )
-    mass = calculate_co2_mass(source_data)
-    table = calculate_co2_containment(
-        source_data.x, source_data.y, mass, reek_poly
+    masses = _calculate_co2_data_from_source_data(source_data, CalculationType.mass)
+    table = calculate_from_co2_data(
+        co2_data=masses,
+        containment_polygon=reek_poly,
+        hazardous_polygon=reek_poly_hazardous,
+        compact=False,
+        calc_type_input="mass"
     )
-    assert sum(t.amount_kg for t in table if t.inside_boundary) == pytest.approx(89498504)
+    print([c for c in table])
+    assert(table.total.values[0] == pytest.approx(696171.20388324))
+    assert(table.total_gas.values[0] == pytest.approx(7650.233009712884))
+    assert(table.total_aqueous.values[0] == pytest.approx(688520.9708735272))
+    assert(table.gas_contained.values[0] == pytest.approx(115.98058252427084))
+    assert(table.total_hazardous.values[0] == pytest.approx(10282.11650485436))
+    assert(table.gas_hazardous.values[0] == pytest.approx(112.99029126213496))
