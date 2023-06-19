@@ -56,7 +56,7 @@ class Co2DataAtTimeStep:
     gas_phase: Optional[np.ndarray]
     volume_coverage: Optional[np.ndarray] = None  # NBNB-AS: Rename?
 
-    def total_amount(self) -> np.ndarray:  # NBNB-AS: No longer used
+    def total_mass(self) -> np.ndarray:
         return self.aqu_phase + self.gas_phase
 
 

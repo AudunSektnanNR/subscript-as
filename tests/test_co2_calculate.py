@@ -9,9 +9,18 @@ import xtgeo
 
 from subscript.co2containment.calculate import (
     calculate_co2_containment,
-    calculate_co2_mass,
-    SourceData,
+    # calculate_co2_mass,
+    # SourceData,
 )
+
+from subscript.co2containment.co2_calculation import (
+    SourceData,
+    _calculate_co2_data_from_source_data,
+    CalculationType,
+    # Co2Data,
+)
+
+from subscript.co2containment.co2_containment import calculate_from_co2_data
 
 
 def _random_prop(dims, rng, low, high):
@@ -41,41 +50,43 @@ def dummy_co2_masses(dummy_co2_grid):
     dims = dummy_co2_grid.dimensions
     nt = 10
     rng = np.random.RandomState(123)
-    poro = _random_prop(dims, rng, 0.1, 0.3)
-    swat = [_random_prop(dims, rng, 0.05, 0.6) for _ in range(nt)]
-    dwat = [_random_prop(dims, rng, 950, 1050) for _ in range(nt)]
-    dgas = [_random_prop(dims, rng, 700, 850) for _ in range(nt)]
-    sgas = [_random_prop(dims, rng, 0.05, 0.6) for _ in range(nt)]
-    amfg = [_random_prop(dims, rng, 0.001, 0.01) for _ in range(nt)]
-    ymfg = [_random_prop(dims, rng, 0.001, 0.01) for _ in range(nt)]
     x, y, vol = _xy_and_volume(dummy_co2_grid)
     dates = [str(2020 + i) for i in range(nt)]
-    source_data = SourceData(x, y, poro, vol, dates, swat, dwat, sgas, dgas, amfg, ymfg)
-    return calculate_co2_mass(source_data)
+    source_data = SourceData(
+        x,
+        y,
+        PORV={date: _random_prop(dims, rng, 0.1, 0.3) for date in dates},
+        VOL=vol,
+        DATES=dates,
+        SWAT={date: _random_prop(dims, rng, 0.05, 0.6) for date in dates},
+        DWAT={date: _random_prop(dims, rng, 950, 1050) for date in dates},
+        SGAS={date: _random_prop(dims, rng, 0.05, 0.6) for date in dates},
+        DGAS={date: _random_prop(dims, rng, 700, 850) for date in dates},
+        AMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates},
+        YMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates}
+    )
+    return _calculate_co2_data_from_source_data(source_data, CalculationType.mass)
 
 
 def _calc_and_compare(poly, grid, masses):
-    total = [m.total_weight() for m in masses]
-    mu = np.mean([np.mean(d) for d in total])
-    totals = {m.date: np.sum(m.total_weight()) for m in masses}
-    xyz = grid.get_xyz()
-    contained = calculate_co2_containment(
-        xyz[0].values1d.compressed(), xyz[1].values1d.compressed(), masses, poly
+    totals = {m.date: np.sum(m.total_mass()) for m in masses.data_list}
+    contained = calculate_from_co2_data(
+        co2_data=masses,
+        containment_polygon=poly,
+        hazardous_polygon=None,
+        compact=False,
+        calc_type_input="mass"
     )
-    contained = sorted(contained, key=lambda c: c.date)
-    for date, c_tot in itertools.groupby(contained, key=lambda c: c.date):
-        assert c_tot == pytest.approx(totals[date], rel=1e-5, abs=1e-8)
-    assert (
-        pytest.approx(
-            np.mean([(c.amount_kg for c in contained if c.inside_boundary)]),
-            rel=0.10,
-        )
-        == (poly.area * grid.nlay * mu)
-    )
+    difference = np.sum([x-y for x,y in zip(contained.total.values, list(totals.values()))])
+    assert(difference == pytest.approx(0.0, abs=1e-8))
+    assert(contained.gas_contained.values[-1] == pytest.approx(90.262207))
+    assert(contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467))
+    assert(contained.gas_hazardous.values[-1] == pytest.approx(0.0))
+    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(0.0))
 
 
 def test_single_poly_co2_containment(dummy_co2_grid, dummy_co2_masses):
-    assert len(dummy_co2_masses) == 10
+    assert len(dummy_co2_masses.data_list) == 10
     poly = shapely.geometry.Polygon([
         [7.1, 7.0],
         [9.1, 9.0],
