@@ -213,7 +213,7 @@ def check_input(arguments: argparse.Namespace):
         raise FileNotFoundError(error_text)
 
 
-def main(arguments):  # NBNB-AS
+def main(arguments):
     arguments = process_args(arguments)
     check_input(arguments)
     df = calculate_out_of_bounds_co2(

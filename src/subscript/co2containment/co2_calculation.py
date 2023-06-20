@@ -70,38 +70,28 @@ class Co2Data:
 
 
 def _try_prop(unrst: EclFile,
-              prop_name: str):  # NBNB-AS
+              prop_name: str):
     try:
         prop = unrst[prop_name]
     except KeyError:
         prop = None
-    print("_try_prop")
-    print(type(prop))
-    exit()
     return prop
 
 
 def _read_props(
         unrst: EclFile,
-        prop_names: List,  # NBNB-AS
-) -> dict:  # NBNB-AS
+        prop_names: List,
+) -> dict:
     props_att = {p: _try_prop(unrst, p) for p in prop_names}
     act_prop_names = [k for k in prop_names if props_att[k] is not None]
     act_props = {k: props_att[k] for k in act_prop_names}
-    print("_read_props")
-    print(type(act_props))
-    exit()
     return act_props
 
 
 def _fetch_properties(
         unrst: EclFile,
-        properties_to_extract: List  # NBNB-AS
+        properties_to_extract: List
 ) -> Tuple[Dict[str, Dict[str, List[np.ndarray]]], List[str]]:
-    print("_fetch_properties")
-    print(type(properties_to_extract))
-    print(type(properties_to_extract[0]))
-    exit()
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
     properties = _read_props(unrst, properties_to_extract)
     properties = {p: {d[1]: properties[p][d[0]].numpy_copy()
@@ -343,7 +333,7 @@ def _calculate_co2_data_from_source_data(
         )
         if calc_type != CalculationType.mass:
             if source == "PFlotran":
-                water_density = np.array([x[1] if 1 - (source_data.AMFG[source_data.DATES[0]][x[0]]) == 1  # NBNB-AS: type check
+                water_density = np.array([x[1] if 1 - (source_data.AMFG[source_data.DATES[0]][x[0]]) == 1
                                           else np.mean(source_data.DWAT[source_data.DATES[0]][
                                               np.where(
                                                 [y == 0 for y in
