@@ -70,21 +70,27 @@ class Co2Data:
 
 
 def _try_prop(unrst: EclFile,
-              prop_name: str):
+              prop_name: str):  # NBNB-AS
     try:
         prop = unrst[prop_name]
     except KeyError:
         prop = None
+    print("_try_prop")
+    print(type(prop))
+    exit()
     return prop
 
 
 def _read_props(
         unrst: EclFile,
-        prop_names: List,
+        prop_names: List,  # NBNB-AS
 ) -> dict:  # NBNB-AS
     props_att = {p: _try_prop(unrst, p) for p in prop_names}
     act_prop_names = [k for k in prop_names if props_att[k] is not None]
     act_props = {k: props_att[k] for k in act_prop_names}
+    print("_read_props")
+    print(type(act_props))
+    exit()
     return act_props
 
 
@@ -92,6 +98,10 @@ def _fetch_properties(
         unrst: EclFile,
         properties_to_extract: List  # NBNB-AS
 ) -> Tuple[Dict[str, Dict[str, List[np.ndarray]]], List[str]]:
+    print("_fetch_properties")
+    print(type(properties_to_extract))
+    print(type(properties_to_extract[0]))
+    exit()
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
     properties = _read_props(unrst, properties_to_extract)
     properties = {p: {d[1]: properties[p][d[0]].numpy_copy()
@@ -110,7 +120,7 @@ def _identify_gas_less_cells(
 
 
 def _reduce_properties(properties: Dict[str, Dict[str, List[np.ndarray]]],
-                       keep_idx: np.ndarray):
+                       keep_idx: np.ndarray) -> Dict:
     return {p: {d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
 
 

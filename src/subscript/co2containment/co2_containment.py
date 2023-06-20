@@ -158,7 +158,7 @@ def _merge_date_rows(df: pd.DataFrame,
     return total_df.reset_index()
 
 
-def make_parser():
+def make_parser() -> argparse.ArgumentParser:
     pn = pathlib.Path(__file__).name
     parser = argparse.ArgumentParser(pn)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
@@ -213,7 +213,7 @@ def check_input(arguments: argparse.Namespace):
         raise FileNotFoundError(error_text)
 
 
-def main(arguments):
+def main(arguments):  # NBNB-AS
     arguments = process_args(arguments)
     check_input(arguments)
     df = calculate_out_of_bounds_co2(
