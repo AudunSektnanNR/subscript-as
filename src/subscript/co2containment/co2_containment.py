@@ -32,6 +32,27 @@ def calculate_out_of_bounds_co2(
     file_hazardous_polygon: Optional[str] = None,
     zone_file: Optional[str] = None
 ) -> pd.DataFrame:
+    """
+    Calculates sum of co2 mass or volume at each time step. Use polygons
+    to divide into different categories (inside / outside / hazardous). Result
+    is a data frame.
+
+    Args:
+        grid_file (str): Path to EGRID-file
+        unrst_file (str): Path to UNRST-file
+        init_file (str): Path to INIT-file
+        compact (bool):
+        calc_type_input (str): Choose mass / volume_extent / volume_actual /
+            volume_actual_simple
+        file_containment_polygon (str): Path to polygon defining the
+            containment area
+        file_hazardous_polygon (str): Path to polygon defining the
+            hazardous area
+        zone_file (str):
+
+    Returns:
+        pd.DataFrame
+    """
     co2_data = calculate_co2(grid_file,
                              unrst_file,
                              calc_type_input,
@@ -60,6 +81,23 @@ def calculate_from_co2_data(
     compact: bool,
     calc_type_input: str
 ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+    """
+    Use polygons to divide co2 mass or volume into different categories
+    (inside / outside / hazardous). Result is a data frame.
+
+    Args:
+        co2_data (Co2Data): Mass/volume of CO2 at each time step
+        containment_polygon (shapely.geometry.Polygon): Polygon defining the
+            containment area
+        hazardous_polygon (shapely.geometry.Polygon): Polygon defining the
+            hazardous area
+        compact (bool):
+        calc_type_input (str): Choose mass / volume_extent / volume_actual /
+            volume_actual_simple
+
+    Returns:
+        pd.DataFrame
+    """
     calc_type = _set_calc_type_from_input_string(calc_type_input.lower())
     print("Calculate contained CO2 using input polygons")
     contained_co2 = calculate_co2_containment(
@@ -80,6 +118,15 @@ def calculate_from_co2_data(
 
 
 def _read_polygon(polygon_file: str) -> shapely.geometry.Polygon:
+    """
+    Reads a polygon from file.
+
+    Args:
+        polygon_file (str): Path to polygon file
+
+    Returns:
+        shapely.geometry.Polygon
+    """
     poly_xy = np.genfromtxt(polygon_file, skip_header=1, delimiter=",")[:, :2]
     return shapely.geometry.Polygon(poly_xy)
 
