@@ -134,6 +134,15 @@ def _read_polygon(polygon_file: str) -> shapely.geometry.Polygon:
 def _construct_containment_table(
     contained_co2: List[ContainedCo2],
 ) -> pd.DataFrame:
+    """
+    Creates a data frame from calculated CO2 data.
+
+    Args:
+        contained_co2 (list of ContainedCo2): CO2 data divided into phases/locations
+
+    Returns:
+        pd.DataFrame
+    """
     records = [
         dataclasses.asdict(c)
         for c in contained_co2
@@ -142,8 +151,20 @@ def _construct_containment_table(
 
 
 def _merge_date_rows(df: pd.DataFrame,
-                     units: str,  # NBNB-AS
                      calc_type: CalculationType) -> pd.DataFrame:
+    """
+    Uses input dataframe to calculate various new columns and renames/merges
+    some columns.
+
+    Args:
+        df (pd.DataFrame): Input data frame
+        calc_type (pd.DataFrame): Input data frame
+        calc_type_input (CalculationType): Choose mass / volume_extent /
+            volume_actual / volume_actual_simple from enum CalculationType
+
+    Returns:
+        pd.DataFrame: Output data frame
+    """
     print("Merging data rows for data frame")
     df = df.drop("zone", axis=1)
     # Total
@@ -206,6 +227,12 @@ def _merge_date_rows(df: pd.DataFrame,
 
 
 def make_parser() -> argparse.ArgumentParser:
+    """
+    Make parser and define arguments
+
+    Returns:
+        argparse.ArgumentParser
+    """
     pn = pathlib.Path(__file__).name
     parser = argparse.ArgumentParser(pn)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
@@ -222,6 +249,15 @@ def make_parser() -> argparse.ArgumentParser:
 
 
 def process_args(arguments: List[str]) -> argparse.Namespace:
+    """
+    Process arguments and do some minor conversions.
+
+    Args:
+        arguments (list of str): Input arguments
+
+    Returns:
+        argparse.Namespace
+    """
     args = make_parser().parse_args(arguments)
     if args.unrst is None:
         args.unrst = args.grid.replace(".EGRID", ".UNRST")
@@ -232,6 +268,16 @@ def process_args(arguments: List[str]) -> argparse.Namespace:
 
 
 def check_input(arguments: argparse.Namespace):
+    """
+    Checks that input arguments are valid. Checks if files exist etc.
+
+    Args:
+        arguments (argparse.Namespace): Input arguments
+
+    Raises:
+        ValueError: If calc_type_input is invalid
+        FileNotFoundError: If one or more input files are not found
+    """
     if CalculationType.check_for_key(arguments.calc_type_input) == False:
         error_text = "Illegal calculation type: " + arguments.calc_type_input
         error_text += "\nValid options:"
@@ -260,7 +306,15 @@ def check_input(arguments: argparse.Namespace):
         raise FileNotFoundError(error_text)
 
 
-def main(arguments):
+def main(arguments: List[str]):
+    """
+    Takes input arguments and calculates total co2 mass or volume at each time
+    step, divided into different phases and locations. Creates a data frame,
+    then exports the data frame to a csv file.
+
+    Args:
+        arguments (list of str): Input arguments
+    """
     arguments = process_args(arguments)
     check_input(arguments)
     df = calculate_out_of_bounds_co2(
