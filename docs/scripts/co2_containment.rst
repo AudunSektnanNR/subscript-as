@@ -43,6 +43,6 @@ Example of how the output CSV file is structured:
 
 .. figure:: images/co2_containment_A.png
    :align: center
-   :width: 70%
+   :width: 40%
 
    Example plot of CO\ :sub:`2` mass made from a CO\ :sub:`2` containment output CSV file
