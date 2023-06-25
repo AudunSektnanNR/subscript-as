@@ -1,6 +1,6 @@
 from dataclasses import dataclass, fields
 from enum import Enum
-from typing import Dict, List, Optional, Literal, Tuple
+from typing import Dict, List, Optional, Literal, Tuple, Union
 
 import numpy as np
 import xtgeo
@@ -54,7 +54,7 @@ class Co2DataAtTimeStep:
     date: str
     aqu_phase: Optional[np.ndarray]
     gas_phase: Optional[np.ndarray]
-    volume_coverage: Optional[np.ndarray] = None  # NBNB-AS: Rename?
+    volume_coverage: Optional[np.ndarray] = None
 
     def total_mass(self) -> np.ndarray:
         return self.aqu_phase + self.gas_phase
@@ -128,7 +128,7 @@ def _extract_source_data(
     print("Start extracting source data")
     grid = EclGrid(grid_file)
     unrst = EclFile(unrst_file)
-    init = EclFile(init_file)  # NBNB-AS: What if init_file == None?
+    init = EclFile(init_file)
     properties, dates = _fetch_properties(unrst, properties_to_extract)
     print("Done fetching properties")
 
@@ -225,7 +225,7 @@ def _eclipse_co2mass(source_data: SourceData,
 
 
 def _pflotran_co2_molar_volume(source_data: SourceData,
-                               water_density: float,
+                               water_density: np.ndarray,
                                co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
                                water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
     dates = source_data.DATES
@@ -249,7 +249,7 @@ def _pflotran_co2_molar_volume(source_data: SourceData,
     return co2_molar_vol
 
 
-def _eclipse_co2_molar_volume(source_data, water_density: float = DEFAULT_WATER_DENSITY,
+def _eclipse_co2_molar_volume(source_data, water_density: Union[float, np.ndarray] = DEFAULT_WATER_DENSITY,
                               water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
     dates = source_data.DATES
     bgas = source_data.BGAS
@@ -339,7 +339,7 @@ def _calculate_co2_data_from_source_data(
                                                 [y == 0 for y in
                                                     source_data.AMFG[source_data.DATES[0]]])[0]])
                                           for x in enumerate(source_data.DWAT[source_data.DATES[0]])])
-                molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_molar_mass,  # NBNB-AS Type water_density
+                molar_vols_co2 = _pflotran_co2_molar_volume(source_data, water_density, co2_molar_mass,
                                                             water_molar_mass)
             else:
                 water_density = np.array(
