@@ -41,7 +41,7 @@ def calculate_out_of_bounds_co2(
         grid_file (str): Path to EGRID-file
         unrst_file (str): Path to UNRST-file
         init_file (str): Path to INIT-file
-        compact (bool):
+        compact (bool): Write the output to a single file as compact as possible
         calc_type_input (str): Choose mass / volume_extent / volume_actual /
             volume_actual_simple
         file_containment_polygon (str): Path to polygon defining the
