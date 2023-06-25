@@ -110,9 +110,9 @@ def calculate_from_co2_data(
     if compact:
         return df
     if co2_data.zone is None:
-        return _merge_date_rows(df, co2_data.units, calc_type)
+        return _merge_date_rows(df, calc_type)
     return {
-        z: _merge_date_rows(g, co2_data.units, calc_type)
+        z: _merge_date_rows(g, calc_type)
         for z, g in df.groupby("zone")
     }
 
