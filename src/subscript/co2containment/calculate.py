@@ -9,6 +9,19 @@ from subscript.co2containment.co2_calculation import CalculationType
 
 @dataclass
 class ContainedCo2:
+    """
+    Dataclass with amount of Co2 in/out a given area for a given phase
+    at different time steps
+
+    Args:
+        date (str): A given time step
+        amount (float): Numerical value with the computed amount at "date"
+        phase (Literal): One of gas/aqueous/undefined. The phase of "amount".
+        location (Literal): One of contained/outside/hazardous. The location "amount"
+                            corresponds to
+        zone (str): 
+        
+    """
     date: str
     amount: float
     phase: Literal["gas", "aqueous", "undefined"]
@@ -16,6 +29,11 @@ class ContainedCo2:
     zone: Optional[str] = None
 
     def __post_init__(self):
+        """
+        If the slot "data" of a ContainedCo2 object does not contain "-", this
+        function converts it to the format yyyy-mm-dd
+        
+        """
         if "-" not in self.date:
             d = self.date
             self.date = f"{d[:4]}-{d[4:6]}-{d[6:]}"
@@ -27,6 +45,22 @@ def calculate_co2_containment(
         hazardous_polygon: Union[Polygon, MultiPolygon, None],
         calc_type: CalculationType
 ) -> List[ContainedCo2]:
+    """
+    Calculates the amount (mass/volume) of CO2 within given boundaries (contained/outside/hazardous)
+    at each time step for each phase (aqueous/gaseous). Result is a list of ContainedCo2 objects.
+
+    Args:
+        co2_data (Co2Data): Information of the amount of CO2 at each cell in each time step
+        containment_polygon (Union[Polygon,Multipolygon]): The polygon that defines the containment
+                                                           area
+        hazardous_polygon (Union[Polygon,Multipolygon]): The polygon that defines the hazardous
+                                                         area   
+        calc_type (CalculationType): Which calculation is to be performed (mass / volume_extent / 
+                                     volume_actual / volume_actual_simple)
+
+    Returns:
+        List[ContainedCo2]
+    """
     if containment_polygon is not None:
         is_contained = _calculate_containment(co2_data.x, co2_data.y, containment_polygon)
     else:
@@ -113,6 +147,18 @@ def _calculate_containment(
     y: np.ndarray,
     poly: Union[Polygon, MultiPolygon]
 ) -> np.ndarray:
+    """
+    Determines if (x,y) coordinates belong to a given polygon.
+
+    Args:
+        x (np.ndarray): x coordinates
+        y (np.ndarray): y coordinates
+        poly (Union[Polygon, MultiPolygon]): The polygon that determines the 
+                                             containment of the (x,y) coordinates
+
+    Returns:
+        np.ndarray    
+    """
     try:
         import pygeos
         points = pygeos.points(x, y)
