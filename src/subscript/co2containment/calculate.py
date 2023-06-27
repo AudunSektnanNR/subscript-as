@@ -63,18 +63,26 @@ def calculate_co2_containment(
         List[ContainedCo2]
     """
     if containment_polygon is not None:
-        is_contained = _calculate_containment(co2_data.x, co2_data.y, containment_polygon)
+        is_contained = _calculate_containment(
+            co2_data.x_coord,
+            co2_data.y_coord,
+            containment_polygon,
+        )
     else:
-        is_contained = np.array([True]*len(co2_data.x))
+        is_contained = np.array([True]*len(co2_data.x_coord))
     if hazardous_polygon is not None:
-        is_hazardous = _calculate_containment(co2_data.x, co2_data.y, hazardous_polygon)
+        is_hazardous = _calculate_containment(
+            co2_data.x_coord,
+            co2_data.y_coord,
+            hazardous_polygon,
+        )
     else:
-        is_hazardous = np.array([False]*len(co2_data.x))
+        is_hazardous = np.array([False]*len(co2_data.x_coord))
     # Count as hazardous if the two boundaries overlap:
     is_contained = [x if not y else False for x, y in zip(is_contained, is_hazardous)]
     is_outside = [not x and not y for x, y in zip(is_contained, is_hazardous)]
     if co2_data.zone is None:
-        if calc_type == CalculationType.volume_extent:
+        if calc_type == CalculationType.VOLUME_EXTENT:
             return [
                 c
                 for w in co2_data.data_list
@@ -102,7 +110,7 @@ def calculate_co2_containment(
             ]
         ]
     zone_map = {z: co2_data.zone == z for z in np.unique(co2_data.zone)}
-    if calc_type == CalculationType.volume_extent:
+    if calc_type == CalculationType.VOLUME_EXTENT:
         return [
             c
             for w in co2_data.data_list

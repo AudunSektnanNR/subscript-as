@@ -183,7 +183,7 @@ def _merge_date_rows(data_frame: pd.DataFrame,
         .rename(columns={"amount": "total"})
     )
     total_df = df1.copy()
-    if calc_type == CalculationType.volume_extent:
+    if calc_type == CalculationType.VOLUME_EXTENT:
         df2 = (
             data_frame
             .drop("phase", axis=1)
@@ -309,13 +309,7 @@ def check_input(arguments: argparse.Namespace):
         ValueError: If calc_type_input is invalid
         FileNotFoundError: If one or more input files are not found
     """
-    if not CalculationType.check_for_key(arguments.calc_type_input):
-        error_text = "Illegal calculation type: " + arguments.calc_type_input
-        error_text += "\nValid options:"
-        for calc_type in CalculationType:
-            error_text += "\n  * " + calc_type.name
-        error_text += "\nExiting"
-        raise ValueError(error_text)
+    CalculationType.check_for_key(arguments.calc_type_input)
 
     files_not_found =[]
     if not os.path.isfile(arguments.grid):
