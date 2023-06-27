@@ -1,5 +1,5 @@
-import itertools
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 import pytest
@@ -7,23 +7,24 @@ import scipy.ndimage
 import shapely.geometry
 import xtgeo
 
-from subscript.co2containment.calculate import (
-    calculate_co2_containment,
-    # calculate_co2_mass,
-    # SourceData,
-)
-
 from subscript.co2containment.co2_calculation import (
     SourceData,
     _calculate_co2_data_from_source_data,
     CalculationType,
-    # Co2Data,
 )
 
 from subscript.co2containment.co2_containment import calculate_from_co2_data
 
 
-def _random_prop(dims, rng, low, high):
+def _random_prop(
+        dims: Tuple,
+        rng: np.random.RandomState,
+        low: float,
+        high: float,
+):
+    """
+    Create random property
+    """
     white = rng.normal(size=dims)
     smooth = scipy.ndimage.gaussian_filter(white, max(dims) / 10)
     values = smooth - np.min(smooth)
@@ -34,6 +35,9 @@ def _random_prop(dims, rng, low, high):
 
 
 def _xy_and_volume(grid: xtgeo.Grid):
+    """
+    Get xy and volume
+    """
     xyz = grid.get_xyz()
     vol = grid.get_bulk_volume().values1d.compressed()
     return xyz[0].values1d.compressed(), xyz[1].values1d.compressed(), vol
@@ -41,6 +45,9 @@ def _xy_and_volume(grid: xtgeo.Grid):
 
 @pytest.fixture
 def dummy_co2_grid():
+    """
+    Create a dummy empty grid
+    """
     dims = (11, 13, 7)
     return xtgeo.create_box_grid(dims)
 
@@ -65,7 +72,7 @@ def dummy_co2_masses(dummy_co2_grid):
         AMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates},
         YMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates}
     )
-    return _calculate_co2_data_from_source_data(source_data, CalculationType.mass)
+    return _calculate_co2_data_from_source_data(source_data, CalculationType.MASS)
 
 
 def _calc_and_compare(poly, masses, poly_hazardous=None):
@@ -78,7 +85,7 @@ def _calc_and_compare(poly, masses, poly_hazardous=None):
         calc_type_input="mass"
     )
     difference = np.sum([x-y for x,y in zip(contained.total.values, list(totals.values()))])
-    assert(difference == pytest.approx(0.0, abs=1e-8))
+    assert difference == pytest.approx(0.0, abs=1e-8)
     return contained
 
 
@@ -92,10 +99,10 @@ def test_single_poly_co2_containment(dummy_co2_masses):
         [7.1, 7.0],
     ])
     contained = _calc_and_compare(poly, dummy_co2_masses)
-    assert(contained.gas_contained.values[-1] == pytest.approx(90.262207))
-    assert(contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467))
-    assert(contained.gas_hazardous.values[-1] == pytest.approx(0.0))
-    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(0.0))
+    assert contained.gas_contained.values[-1] == pytest.approx(90.262207)
+    assert contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467)
+    assert contained.gas_hazardous.values[-1] == pytest.approx(0.0)
+    assert contained.aqueous_hazardous.values[-1] == pytest.approx(0.0)
 
 
 def test_multi_poly_co2_containment(dummy_co2_masses):
@@ -116,10 +123,10 @@ def test_multi_poly_co2_containment(dummy_co2_masses):
         ]),
     ])
     contained = _calc_and_compare(poly, dummy_co2_masses)
-    assert(contained.gas_contained.values[-1] == pytest.approx(123.70267352027123))
-    assert(contained.aqueous_contained.values[-1] == pytest.approx(252.79970312163525))
-    assert(contained.gas_hazardous.values[-1] == pytest.approx(0.0))
-    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(0.0))
+    assert contained.gas_contained.values[-1] == pytest.approx(123.70267352027123)
+    assert contained.aqueous_contained.values[-1] == pytest.approx(252.79970312163525)
+    assert contained.gas_hazardous.values[-1] == pytest.approx(0.0)
+    assert contained.aqueous_hazardous.values[-1] == pytest.approx(0.0)
 
 
 def test_hazardous_poly_co2_containment(dummy_co2_masses):
@@ -138,10 +145,10 @@ def test_hazardous_poly_co2_containment(dummy_co2_masses):
         [9.1, 9.0],
     ])
     contained = _calc_and_compare(poly, dummy_co2_masses, poly_hazardous)
-    assert(contained.gas_contained.values[-1] == pytest.approx(90.262207))
-    assert(contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467))
-    assert(contained.gas_hazardous.values[-1] == pytest.approx(12.687891108274542))
-    assert(contained.aqueous_hazardous.values[-1] == pytest.approx(20.33893251315071))
+    assert contained.gas_contained.values[-1] == pytest.approx(90.262207)
+    assert contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467)
+    assert contained.gas_hazardous.values[-1] == pytest.approx(12.687891108274542)
+    assert contained.aqueous_hazardous.values[-1] == pytest.approx(20.33893251315071)
 
 
 def test_reek_grid():
@@ -184,7 +191,7 @@ def test_reek_grid():
         AMFG={"2042": np.ones_like(poro) * 0.1},
         YMFG={"2042": np.ones_like(poro) * 0.1},
     )
-    masses = _calculate_co2_data_from_source_data(source_data, CalculationType.mass)
+    masses = _calculate_co2_data_from_source_data(source_data, CalculationType.MASS)
     table = calculate_from_co2_data(
         co2_data=masses,
         containment_polygon=reek_poly,
@@ -192,14 +199,17 @@ def test_reek_grid():
         compact=False,
         calc_type_input="mass"
     )
-    assert(table.total.values[0] == pytest.approx(696171.20388324))
-    assert(table.total_gas.values[0] == pytest.approx(7650.233009712884))
-    assert(table.total_aqueous.values[0] == pytest.approx(688520.9708735272))
-    assert(table.gas_contained.values[0] == pytest.approx(115.98058252427084))
-    assert(table.total_hazardous.values[0] == pytest.approx(10282.11650485436))
-    assert(table.gas_hazardous.values[0] == pytest.approx(112.99029126213496))
+    assert table.total.values[0] == pytest.approx(696171.20388324)
+    assert table.total_gas.values[0] == pytest.approx(7650.233009712884)
+    assert table.total_aqueous.values[0] == pytest.approx(688520.9708735272)
+    assert table.gas_contained.values[0] == pytest.approx(115.98058252427084)
+    assert table.total_hazardous.values[0] == pytest.approx(10282.11650485436)
+    assert table.gas_hazardous.values[0] == pytest.approx(112.99029126213496)
 
-    volumes = _calculate_co2_data_from_source_data(source_data, CalculationType.volume_actual_simple)
+    volumes = _calculate_co2_data_from_source_data(
+        source_data,
+        CalculationType.VOLUME_ACTUAL_SIMPLE,
+    )
     table2 = calculate_from_co2_data(
         co2_data=volumes,
         containment_polygon=reek_poly,
@@ -207,9 +217,9 @@ def test_reek_grid():
         compact=False,
         calc_type_input="volume_actual_simple"
     )
-    assert(table2.total.values[0] == pytest.approx(358.1699999999088))
-    assert(table2.total_gas.values[0] == pytest.approx(35.81700000000973))
-    assert(table2.total_aqueous.values[0] == pytest.approx(322.3529999998991))
-    assert(table2.gas_contained.values[0] == pytest.approx(0.5430000000000004))
-    assert(table2.total_hazardous.values[0] == pytest.approx(5.289999999999996))
-    assert(table2.gas_hazardous.values[0] == pytest.approx(0.5290000000000004))
+    assert table2.total.values[0] == pytest.approx(358.1699999999088)
+    assert table2.total_gas.values[0] == pytest.approx(35.81700000000973)
+    assert table2.total_aqueous.values[0] == pytest.approx(322.3529999998991)
+    assert table2.gas_contained.values[0] == pytest.approx(0.5430000000000004)
+    assert table2.total_hazardous.values[0] == pytest.approx(5.289999999999996)
+    assert table2.gas_hazardous.values[0] == pytest.approx(0.5290000000000004)
