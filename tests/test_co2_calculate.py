@@ -18,7 +18,7 @@ from subscript.co2containment.co2_containment import calculate_from_co2_data
 
 def _random_prop(
         dims: Tuple,
-        rng: np.random.RandomState,
+        rng,
         low: float,
         high: float,
 ):
@@ -43,25 +43,22 @@ def _xy_and_volume(grid: xtgeo.Grid):
     return xyz[0].values1d.compressed(), xyz[1].values1d.compressed(), vol
 
 
-@pytest.fixture
-def dummy_co2_grid():
+# @pytest.fixture
+def _get_dummy_co2_masses():
     """
-    Create a dummy empty grid
+    Create dummy co2 mass data
     """
     dims = (11, 13, 7)
-    return xtgeo.create_box_grid(dims)
+    dummy_co2_grid = xtgeo.create_box_grid(dims)
 
-
-@pytest.fixture
-def dummy_co2_masses(dummy_co2_grid):
-    dims = dummy_co2_grid.dimensions
-    nt = 10
+    n_time_steps = 10
+    # pylint: disable-next=no-member
     rng = np.random.RandomState(123)
-    x, y, vol = _xy_and_volume(dummy_co2_grid)
-    dates = [str(2020 + i) for i in range(nt)]
+    x_coord, y_coord, vol = _xy_and_volume(dummy_co2_grid)
+    dates = [str(2020 + i) for i in range(n_time_steps)]
     source_data = SourceData(
-        x,
-        y,
+        x_coord,
+        y_coord,
         PORV={date: _random_prop(dims, rng, 0.1, 0.3) for date in dates},
         VOL=vol,
         DATES=dates,
@@ -89,7 +86,11 @@ def _calc_and_compare(poly, masses, poly_hazardous=None):
     return contained
 
 
-def test_single_poly_co2_containment(dummy_co2_masses):
+def test_single_poly_co2_containment():
+    """"
+    Test CO2 containment code, single polygon
+    """
+    dummy_co2_masses = _get_dummy_co2_masses()
     assert len(dummy_co2_masses.data_list) == 10
     poly = shapely.geometry.Polygon([
         [7.1, 7.0],
@@ -105,7 +106,11 @@ def test_single_poly_co2_containment(dummy_co2_masses):
     assert contained.aqueous_hazardous.values[-1] == pytest.approx(0.0)
 
 
-def test_multi_poly_co2_containment(dummy_co2_masses):
+def test_multi_poly_co2_containment():
+    """"
+    Test CO2 containment code, muliple polygons
+    """
+    dummy_co2_masses = _get_dummy_co2_masses()
     poly = shapely.geometry.MultiPolygon([
         shapely.geometry.Polygon([
             [7.1, 7.0],
@@ -129,7 +134,11 @@ def test_multi_poly_co2_containment(dummy_co2_masses):
     assert contained.aqueous_hazardous.values[-1] == pytest.approx(0.0)
 
 
-def test_hazardous_poly_co2_containment(dummy_co2_masses):
+def test_hazardous_poly_co2_containment():
+    """"
+    Test CO2 containment code, with hazardous polygon
+    """
+    dummy_co2_masses = _get_dummy_co2_masses()
     assert len(dummy_co2_masses.data_list) == 10
     poly = shapely.geometry.Polygon([
         [7.1, 7.0],
@@ -152,6 +161,10 @@ def test_hazardous_poly_co2_containment(dummy_co2_masses):
 
 
 def test_reek_grid():
+    """"
+    Test CO2 containment code, with eclipse Reek data.
+    Tests both mass and volume_actual calculations.
+    """
     reek_gridfile = (
         Path(__file__).absolute().parent
         / "data"
@@ -177,10 +190,10 @@ def test_reek_grid():
     poro = xtgeo.gridproperty_from_file(
         reek_gridfile.with_suffix(".INIT"), name="PORO", grid=grid
     ).values1d.compressed()
-    x, y, vol = _xy_and_volume(grid)
+    x_coord, y_coord, vol = _xy_and_volume(grid)
     source_data = SourceData(
-        x,
-        y,
+        x_coord,
+        y_coord,
         PORV={"2042": np.ones_like(poro) * 0.1},
         VOL=vol,
         DATES=["2042"],
