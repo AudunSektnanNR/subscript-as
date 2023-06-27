@@ -348,8 +348,8 @@ def _set_calc_type_from_input_string(calc_type_input: str) -> CalculationType:
       CalculationType
     
     """
-    CalculationType.check_for_key(calc_type_input)
     calc_type_input = calc_type_input.upper()
+    CalculationType.check_for_key(calc_type_input)
     return CalculationType[calc_type_input]
 
 

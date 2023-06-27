@@ -309,7 +309,7 @@ def check_input(arguments: argparse.Namespace):
         ValueError: If calc_type_input is invalid
         FileNotFoundError: If one or more input files are not found
     """
-    CalculationType.check_for_key(arguments.calc_type_input)
+    CalculationType.check_for_key(arguments.calc_type_input.upper())
 
     files_not_found =[]
     if not os.path.isfile(arguments.grid):
