@@ -44,7 +44,8 @@ class SourceData:
       VOL (Dict): Grid cells volume (m3) at each date
       SWAT (Dict): Water saturation for each grid cell at each date
       SGAS (Dict): Gas saturation for each grid cell at each date
-      RPORV (Dict): Pore volume (VOL x Porosity) for each grid cell at each date
+      RPORV (Dict): Pore volume (VOL x Porosity) at reservoir conditions
+                    for each grid cell at each date
       PORV (Dict): Pore volume (VOL x Porosity) for each grid cell at each date
       AMFG (Dict): Aqueous mole fraction of gas for each grid cell at each date
       YMFG (Dict): Gaseous mole fraction of gas for each grid cell at each date
