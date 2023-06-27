@@ -48,17 +48,20 @@ def calculate_co2_containment(
     calc_type: CalculationType,
 ) -> List[ContainedCo2]:
     """
-    Calculates the amount (mass/volume) of CO2 within given boundaries (contained/outside/hazardous)
-    at each time step for each phase (aqueous/gaseous). Result is a list of ContainedCo2 objects.
+    Calculates the amount (mass/volume) of CO2 within given boundaries
+    (contained/outside/hazardous) at each time step for each phase
+    (aqueous/gaseous). Result is a list of ContainedCo2 objects.
 
     Args:
-        co2_data (Co2Data): Information of the amount of CO2 at each cell in each time step
-        containment_polygon (Union[Polygon,Multipolygon]): The polygon that defines the containment
-                                                           area
-        hazardous_polygon (Union[Polygon,Multipolygon]): The polygon that defines the hazardous
-                                                         area
-        calc_type (CalculationType): Which calculation is to be performed (mass / volume_extent /
-                                     volume_actual / volume_actual_simple)
+        co2_data (Co2Data): Information of the amount of CO2 at each cell in
+                            each time step
+        containment_polygon (Union[Polygon,Multipolygon]): The polygon that defines
+                                                           the containment area
+        hazardous_polygon (Union[Polygon,Multipolygon]): The polygon that defines
+                                                         the hazardous area
+        calc_type (CalculationType): Which calculation is to be performed
+                                     (mass / volume_extent / volume_actual /
+                                      volume_actual_simple)
 
     Returns:
         List[ContainedCo2]

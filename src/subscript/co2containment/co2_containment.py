@@ -241,7 +241,8 @@ def make_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--calc_type_input",
-        help="CO2 calculation options: mass / volume_extent / volume_actual / volume_actual_simple",
+        help="CO2 calculation options: mass / volume_extent / volume_actual / \
+             volume_actual_simple",
         default="mass",
     )
     parser.add_argument(
