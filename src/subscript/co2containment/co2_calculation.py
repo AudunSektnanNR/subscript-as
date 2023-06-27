@@ -313,7 +313,7 @@ def _extract_source_data(
         cells_x,
         cells_y,
         dates,
-        dict(properties.items()),
+        **dict(properties.items()),
         **{"zone": zone}
     )
     return source_data
