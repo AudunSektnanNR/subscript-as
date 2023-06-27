@@ -19,7 +19,7 @@ PROPERTIES_TO_EXTRACT = ["RPORV", "PORV", "SGAS", "DGAS", "BGAS", "DWAT",
 
 class CalculationType(Enum):
     """
-    Which type of calculation type is made
+    Which type of CO2 calculation is made
     """
     mass = 0
     volume_extent = 1

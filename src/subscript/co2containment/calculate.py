@@ -17,8 +17,8 @@ class ContainedCo2:
         date (str): A given time step
         amount (float): Numerical value with the computed amount at "date"
         phase (Literal): One of gas/aqueous/undefined. The phase of "amount".
-        location (Literal): One of contained/outside/hazardous. The location "amount"
-                            corresponds to
+        location (Literal): One of contained/outside/hazardous. The location
+            that "amount" corresponds to.
         zone (str): 
         
     """
