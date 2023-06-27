@@ -1,8 +1,9 @@
+"""CO2 calculation methods"""
 from dataclasses import dataclass
 from typing import List, Union, Literal, Optional
 
 import numpy as np
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon, Point
 from subscript.co2containment.co2_calculation import Co2Data
 from subscript.co2containment.co2_calculation import CalculationType
 
@@ -35,8 +36,8 @@ class ContainedCo2:
         
         """
         if "-" not in self.date:
-            d = self.date
-            self.date = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+            date = self.date
+            self.date = f"{date[:4]}-{date[4:6]}-{date[6:]}"
 
 
 def calculate_co2_containment(
@@ -78,95 +79,101 @@ def calculate_co2_containment(
                 c
                 for w in co2_data.data_list
                 for c in [
-                    ContainedCo2(w.date, sum(w.volume_coverage[is_contained]), "undefined", "contained"),
-                    ContainedCo2(w.date, sum(w.volume_coverage[is_outside]), "undefined", "outside"),
-                    ContainedCo2(w.date, sum(w.volume_coverage[is_hazardous]), "undefined", "hazardous"),
+                    ContainedCo2(
+                        w.date, sum(w.volume_coverage[is_contained]), "undefined", "contained"
+                    ),
+                    ContainedCo2(
+                        w.date, sum(w.volume_coverage[is_outside]), "undefined", "outside"
+                    ),
+                    ContainedCo2(
+                        w.date, sum(w.volume_coverage[is_hazardous]), "undefined", "hazardous"
+                    ),
                 ]]
-        else:
-            return [
-                c
-                for w in co2_data.data_list
-                for c in [
-                    ContainedCo2(w.date, sum(w.gas_phase[is_contained]), "gas", "contained"),
-                    ContainedCo2(w.date, sum(w.gas_phase[is_outside]), "gas", "outside"),
-                    ContainedCo2(w.date, sum(w.gas_phase[is_hazardous]), "gas", "hazardous"),
-                    ContainedCo2(w.date, sum(w.aqu_phase[is_contained]), "aqueous", "contained"),
-                    ContainedCo2(w.date, sum(w.aqu_phase[is_outside]), "aqueous", "outside"),
-                    ContainedCo2(w.date, sum(w.aqu_phase[is_hazardous]), "aqueous", "hazardous"),
-                ]
+        return [
+            c
+            for w in co2_data.data_list
+            for c in [
+                ContainedCo2(w.date, sum(w.gas_phase[is_contained]), "gas", "contained"),
+                ContainedCo2(w.date, sum(w.gas_phase[is_outside]), "gas", "outside"),
+                ContainedCo2(w.date, sum(w.gas_phase[is_hazardous]), "gas", "hazardous"),
+                ContainedCo2(w.date, sum(w.aqu_phase[is_contained]), "aqueous", "contained"),
+                ContainedCo2(w.date, sum(w.aqu_phase[is_outside]), "aqueous", "outside"),
+                ContainedCo2(w.date, sum(w.aqu_phase[is_hazardous]), "aqueous", "hazardous"),
             ]
-    else:
-        zone_map = {z: co2_data.zone == z for z in np.unique(co2_data.zone)}
-        if calc_type == CalculationType.volume_extent:
-            return [
-                c
-                for w in co2_data.data_list
-                for zn, zm in zone_map.items()
-                for c in [
-                    ContainedCo2(
-                        w.date, sum(w.volume_coverage[is_contained & zm]), "gas", "contained", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.volume_coverage[is_outside & zm]), "gas", "outside", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.volume_coverage[is_hazardous & zm]), "gas", "hazardous", zn
-                    ),
-                ]
+        ]
+    zone_map = {z: co2_data.zone == z for z in np.unique(co2_data.zone)}
+    if calc_type == CalculationType.volume_extent:
+        return [
+            c
+            for w in co2_data.data_list
+            for zn, zm in zone_map.items()
+            for c in [
+                ContainedCo2(
+                    w.date, sum(w.volume_coverage[is_contained & zm]), "gas", "contained", zn
+                ),
+                ContainedCo2(
+                    w.date, sum(w.volume_coverage[is_outside & zm]), "gas", "outside", zn
+                ),
+                ContainedCo2(
+                    w.date, sum(w.volume_coverage[is_hazardous & zm]), "gas", "hazardous", zn
+                ),
             ]
-        else:
-            return [
-                c
-                for w in co2_data.data_list
-                for zn, zm in zone_map.items()
-                for c in [
-                    ContainedCo2(
-                        w.date, sum(w.gas_phase[is_contained & zm]), "gas", "contained", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.gas_phase[is_outside & zm]), "gas", "outside", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.gas_phase[is_hazardous & zm]), "gas", "hazardous", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.aqu_phase[is_contained & zm]), "aqueous", "contained", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.aqu_phase[is_outside & zm]), "aqueous", "outside", zn
-                    ),
-                    ContainedCo2(
-                        w.date, sum(w.aqu_phase[is_hazardous & zm]), "aqueous", "hazardous", zn
-                    ),
-                ]
-            ]
+        ]
+    return [
+        c
+        for w in co2_data.data_list
+        for zn, zm in zone_map.items()
+        for c in [
+            ContainedCo2(
+                w.date, sum(w.gas_phase[is_contained & zm]), "gas", "contained", zn
+            ),
+            ContainedCo2(
+                w.date, sum(w.gas_phase[is_outside & zm]), "gas", "outside", zn
+            ),
+            ContainedCo2(
+                w.date, sum(w.gas_phase[is_hazardous & zm]), "gas", "hazardous", zn
+            ),
+            ContainedCo2(
+                w.date, sum(w.aqu_phase[is_contained & zm]), "aqueous", "contained", zn
+            ),
+            ContainedCo2(
+                w.date, sum(w.aqu_phase[is_outside & zm]), "aqueous", "outside", zn
+            ),
+            ContainedCo2(
+                w.date, sum(w.aqu_phase[is_hazardous & zm]), "aqueous", "hazardous", zn
+            ),
+        ]
+    ]
 
 
 def _calculate_containment(
-    x: np.ndarray,
-    y: np.ndarray,
+    x_coord: np.ndarray,
+    y_coord: np.ndarray,
     poly: Union[Polygon, MultiPolygon]
 ) -> np.ndarray:
     """
     Determines if (x,y) coordinates belong to a given polygon.
 
     Args:
-        x (np.ndarray): x coordinates
-        y (np.ndarray): y coordinates
+        x_coord (np.ndarray): x coordinates
+        y_coord (np.ndarray): y coordinates
         poly (Union[Polygon, MultiPolygon]): The polygon that determines the 
                                              containment of the (x,y) coordinates
 
     Returns:
         np.ndarray    
     """
-    try:
-        import pygeos
-        points = pygeos.points(x, y)
-        poly = pygeos.from_shapely(poly)
-        return pygeos.contains(poly, points)
-    except ImportError:
-        import shapely.geometry as sg
-        return np.array([
-            poly.contains(sg.Point(_x, _y))
-            for _x, _y in zip(x, y)
-        ])
+    return np.array([
+        poly.contains(Point(_x, _y))
+        for _x, _y in zip(x_coord, y_coord)
+    ])
+    # try:
+    #     import pygeos
+    #     points = pygeos.points(x_coord, y_coord)
+    #     poly = pygeos.from_shapely(poly)
+    #     return pygeos.contains(poly, points)
+    # except ImportError:
+    #     return np.array([
+    #         poly.contains(Point(_x, _y))
+    #         for _x, _y in zip(x_coord, y_coord)
+    #     ])
