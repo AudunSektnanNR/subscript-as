@@ -1,3 +1,8 @@
+"""
+Calculates the amount of CO2 inside and outside a given perimeter,
+and separates the result per formation and phase (gas/dissolved).
+Output is a table on CSV format.
+"""
 import argparse
 import dataclasses
 import os
@@ -9,19 +14,20 @@ import numpy as np
 import pandas as pd
 import shapely.geometry
 
-from .co2_calculation import (
+from subscript.co2containment.co2_calculation import (
     calculate_co2,
     Co2Data,
     CalculationType,
     _set_calc_type_from_input_string,
 )
 
-from .calculate import (
+from subscript.co2containment.calculate import (
     calculate_co2_containment,
     ContainedCo2,
 )
 
 
+#pylint: disable=too-many-arguments
 def calculate_out_of_bounds_co2(
     grid_file: str,
     unrst_file: str,
@@ -106,14 +112,14 @@ def calculate_from_co2_data(
         hazardous_polygon,
         calc_type=calc_type
     )
-    df = _construct_containment_table(contained_co2)
+    data_frame = _construct_containment_table(contained_co2)
     if compact:
-        return df
+        return data_frame
     if co2_data.zone is None:
-        return _merge_date_rows(df, calc_type)
+        return _merge_date_rows(data_frame, calc_type)
     return {
         z: _merge_date_rows(g, calc_type)
-        for z, g in df.groupby("zone")
+        for z, g in data_frame.groupby("zone")
     }
 
 
@@ -150,14 +156,15 @@ def _construct_containment_table(
     return pd.DataFrame.from_records(records)
 
 
-def _merge_date_rows(df: pd.DataFrame,
+# pylint: disable-msg=too-many-locals
+def _merge_date_rows(data_frame: pd.DataFrame,
                      calc_type: CalculationType) -> pd.DataFrame:
     """
     Uses input dataframe to calculate various new columns and renames/merges
     some columns.
 
     Args:
-        df (pd.DataFrame): Input data frame
+        data_frame (pd.DataFrame): Input data frame
         calc_type (pd.DataFrame): Input data frame
         calc_type_input (CalculationType): Choose mass / volume_extent /
             volume_actual / volume_actual_simple from enum CalculationType
@@ -166,10 +173,10 @@ def _merge_date_rows(df: pd.DataFrame,
         pd.DataFrame: Output data frame
     """
     print("Merging data rows for data frame")
-    df = df.drop("zone", axis=1)
+    data_frame = data_frame.drop("zone", axis=1)
     # Total
     df1 = (
-        df
+        data_frame
         .drop(["phase", "location"], axis=1)
         .groupby(["date"])
         .sum()
@@ -178,7 +185,7 @@ def _merge_date_rows(df: pd.DataFrame,
     total_df = df1.copy()
     if calc_type == CalculationType.volume_extent:
         df2 = (
-            df
+            data_frame
             .drop("phase", axis=1)
             .groupby(["location", "date"])
             .sum()
@@ -192,7 +199,7 @@ def _merge_date_rows(df: pd.DataFrame,
             total_df = total_df.merge(_df, on="date", how="left")
     else:
         df2 = (
-            df
+            data_frame
             .drop("location", axis=1)
             .groupby(["phase", "date"])
             .sum()
@@ -201,7 +208,7 @@ def _merge_date_rows(df: pd.DataFrame,
         df2b = df2.loc["aqueous"].rename(columns={"amount": "total_aqueous"})
         # Total by containment
         df3 = (
-            df
+            data_frame
             .drop("phase", axis=1)
             .groupby(["location", "date"])
             .sum()
@@ -211,7 +218,7 @@ def _merge_date_rows(df: pd.DataFrame,
         df3c = df3.loc[("hazardous",)].rename(columns={"amount": "total_hazardous"})
         # Total by containment and phase
         df4 = (
-            df
+            data_frame
             .groupby(["phase", "location", "date"])
             .sum()
         )
@@ -233,17 +240,41 @@ def make_parser() -> argparse.ArgumentParser:
     Returns:
         argparse.ArgumentParser
     """
-    pn = pathlib.Path(__file__).name
-    parser = argparse.ArgumentParser(pn)
+    path_name = pathlib.Path(__file__).name
+    parser = argparse.ArgumentParser(path_name)
     parser.add_argument("grid", help="Grid (.EGRID) from which maps are generated")
-    parser.add_argument("containment_polygon", help="Polygon that determines the bounds of the containment area. Can use None as input value, defining all as contained.")
+    parser.add_argument(
+        "containment_polygon",
+        help="Polygon that determines the bounds of the containment area."\
+             "Can use None as input value, defining all as contained.",
+    )
     parser.add_argument("outfile", help="Output filename")
-    parser.add_argument("--unrst", help="Path to UNRST file. Will assume same base name as grid if not provided", default=None)
-    parser.add_argument("--init", help="Path to INIT file. Will assume same base name as grid if not provided", default=None)
+    parser.add_argument(
+        "--unrst",
+        help="Path to UNRST file. Will assume same base name as grid if not provided",
+        default=None,
+    )
+    parser.add_argument(
+        "--init",
+        help="Path to INIT file. Will assume same base name as grid if not provided",
+        default=None,
+    )
     parser.add_argument("--zonefile", help="Path to file containing zone information", default=None)
-    parser.add_argument("--compact", help="Write the output to a single file as compact as possible", action="store_true")
-    parser.add_argument("--calc_type_input", help="CO2 calculation options: mass / volume_extent / volume_actual / volume_actual_simple", default="mass")
-    parser.add_argument("--hazardous_polygon", help="Polygon that determines the bounds of the hazardous area", default=None)
+    parser.add_argument(
+        "--compact",
+        help="Write the output to a single file as compact as possible",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--calc_type_input",
+        help="CO2 calculation options: mass / volume_extent / volume_actual / volume_actual_simple",
+        default="mass",
+    )
+    parser.add_argument(
+        "--hazardous_polygon",
+        help="Polygon that determines the bounds of the hazardous area",
+        default=None,
+    )
 
     return parser
 
@@ -278,15 +309,15 @@ def check_input(arguments: argparse.Namespace):
         ValueError: If calc_type_input is invalid
         FileNotFoundError: If one or more input files are not found
     """
-    if CalculationType.check_for_key(arguments.calc_type_input) == False:
+    if not CalculationType.check_for_key(arguments.calc_type_input):
         error_text = "Illegal calculation type: " + arguments.calc_type_input
         error_text += "\nValid options:"
-        for x in CalculationType:
-            error_text += "\n  * " + x.name
+        for calc_type in CalculationType:
+            error_text += "\n  * " + calc_type.name
         error_text += "\nExiting"
         raise ValueError(error_text)
 
-    files_not_found =[] 
+    files_not_found =[]
     if not os.path.isfile(arguments.grid):
         files_not_found.append(arguments.grid)
     if not os.path.isfile(arguments.unrst):
@@ -295,7 +326,8 @@ def check_input(arguments: argparse.Namespace):
         files_not_found.append(arguments.init)
     if arguments.zonefile is not None and not os.path.isfile(arguments.zonefile):
         files_not_found.append(arguments.zonefile)
-    if arguments.containment_polygon is not None and not os.path.isfile(arguments.containment_polygon):
+    if arguments.containment_polygon is not None \
+            and not os.path.isfile(arguments.containment_polygon):
         files_not_found.append(arguments.containment_polygon)
     if arguments.hazardous_polygon is not None and not os.path.isfile(arguments.hazardous_polygon):
         files_not_found.append(arguments.hazardous_polygon)
@@ -317,7 +349,7 @@ def main(arguments: List[str]):
     """
     arguments = process_args(arguments)
     check_input(arguments)
-    df = calculate_out_of_bounds_co2(
+    data_frame = calculate_out_of_bounds_co2(
         arguments.grid,
         arguments.unrst,
         arguments.init,
@@ -327,14 +359,12 @@ def main(arguments: List[str]):
         arguments.hazardous_polygon,
         arguments.zonefile
     )
-    if isinstance(df, dict):
-        of = pathlib.Path(arguments.outfile)
-        [
-            _df.to_csv(of.with_name(f"{of.stem}_{z}{of.suffix}"), index=False)
-            for z, _df in df.items()
-        ]
+    if isinstance(data_frame, dict):
+        out_file = pathlib.Path(arguments.outfile)
+        for key, _df in data_frame.items():
+            _df.to_csv(out_file.with_name(f"{out_file.stem}_{key}{out_file.suffix}"), index=False)
     else:
-        df.to_csv(arguments.outfile, index=False)
+        data_frame.to_csv(arguments.outfile, index=False)
 
 
 if __name__ == "__main__":
