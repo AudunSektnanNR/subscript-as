@@ -20,10 +20,10 @@ def _simple_cube_grid():
         np.linspace(-1, 1, dims[0]),
         np.linspace(-1, 1, dims[1]),
         np.linspace(-1, 1, dims[2]),
-        indexing="ij"
+        indexing="ij",
     )
     dates = [f"{d}0101" for d in range(2030, 2050)]
-    dists = np.sqrt(m_x ** 2 + m_y ** 2 + m_z ** 2)
+    dists = np.sqrt(m_x**2 + m_y**2 + m_z**2)
     gas_saturations = {}
     for count, date in enumerate(dates):
         gas_saturations[date] = np.maximum(
@@ -40,7 +40,10 @@ def _simple_cube_grid():
         SWAT={date: 1 - value for date, value in gas_saturations.items()},
         SGAS=gas_saturations,
         DGAS={date: np.ones(size) * 100.0 for date in dates},
-        AMFG={date: np.ones(size) * 0.02 * value for date, value in gas_saturations.items()},
+        AMFG={
+            date: np.ones(size) * 0.02 * value
+            for date, value in gas_saturations.items()
+        },
         YMFG={date: np.ones(size) * 0.99 for date in dates},
     )
 
@@ -50,13 +53,17 @@ def _simple_poly():
     """
     Create simple polygon
     """
-    return shapely.geometry.Polygon(np.array([
-        [-0.45, -0.38],
-        [0.41, -0.39],
-        [0.33, 0.76],
-        [-0.27, 0.75],
-        [-0.45, -0.38],
-    ]))
+    return shapely.geometry.Polygon(
+        np.array(
+            [
+                [-0.45, -0.38],
+                [0.41, -0.39],
+                [0.33, 0.76],
+                [-0.27, 0.75],
+                [-0.45, -0.38],
+            ]
+        )
+    )
 
 
 def test_simple_cube_grid():
@@ -84,7 +91,7 @@ def test_zoned_simple_cube_grid():
 
     # pylint: disable-next=no-member
     random_state = np.random.RandomState(123)
-    zone = random_state.choice([1, 2, 3], size=simple_cube_grid.PORV['20300101'].shape)
+    zone = random_state.choice([1, 2, 3], size=simple_cube_grid.PORV["20300101"].shape)
     simple_cube_grid.zone = zone
     co2_data = _calculate_co2_data_from_source_data(
         simple_cube_grid,

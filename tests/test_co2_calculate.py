@@ -17,10 +17,10 @@ from subscript.co2containment.co2_containment import calculate_from_co2_data
 
 
 def _random_prop(
-        dims: Tuple,
-        rng,
-        low: float,
-        high: float,
+    dims: Tuple,
+    rng,
+    low: float,
+    high: float,
 ):
     """
     Create random property
@@ -67,7 +67,7 @@ def _get_dummy_co2_masses():
         SGAS={date: _random_prop(dims, rng, 0.05, 0.6) for date in dates},
         DGAS={date: _random_prop(dims, rng, 700, 850) for date in dates},
         AMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates},
-        YMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates}
+        YMFG={date: _random_prop(dims, rng, 0.001, 0.01) for date in dates},
     )
     return _calculate_co2_data_from_source_data(source_data, CalculationType.MASS)
 
@@ -79,26 +79,30 @@ def _calc_and_compare(poly, masses, poly_hazardous=None):
         containment_polygon=poly,
         hazardous_polygon=poly_hazardous,
         compact=False,
-        calc_type_input="mass"
+        calc_type_input="mass",
     )
-    difference = np.sum([x-y for x,y in zip(contained.total.values, list(totals.values()))])
+    difference = np.sum(
+        [x - y for x, y in zip(contained.total.values, list(totals.values()))]
+    )
     assert difference == pytest.approx(0.0, abs=1e-8)
     return contained
 
 
 def test_single_poly_co2_containment():
-    """"
+    """
     Test CO2 containment code, single polygon
     """
     dummy_co2_masses = _get_dummy_co2_masses()
     assert len(dummy_co2_masses.data_list) == 10
-    poly = shapely.geometry.Polygon([
-        [7.1, 7.0],
-        [9.1, 9.0],
-        [7.1, 11.0],
-        [5.1, 9.0],
-        [7.1, 7.0],
-    ])
+    poly = shapely.geometry.Polygon(
+        [
+            [7.1, 7.0],
+            [9.1, 9.0],
+            [7.1, 11.0],
+            [5.1, 9.0],
+            [7.1, 7.0],
+        ]
+    )
     contained = _calc_and_compare(poly, dummy_co2_masses)
     assert contained.gas_contained.values[-1] == pytest.approx(90.262207)
     assert contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467)
@@ -107,26 +111,32 @@ def test_single_poly_co2_containment():
 
 
 def test_multi_poly_co2_containment():
-    """"
+    """ "
     Test CO2 containment code, muliple polygons
     """
     dummy_co2_masses = _get_dummy_co2_masses()
-    poly = shapely.geometry.MultiPolygon([
-        shapely.geometry.Polygon([
-            [7.1, 7.0],
-            [9.1, 9.0],
-            [7.1, 11.0],
-            [5.1, 9.0],
-            [7.1, 7.0],
-        ]),
-        shapely.geometry.Polygon([
-            [1.0, 1.0],
-            [3.0, 1.0],
-            [3.0, 3.0],
-            [1.0, 3.0],
-            [1.0, 1.0],
-        ]),
-    ])
+    poly = shapely.geometry.MultiPolygon(
+        [
+            shapely.geometry.Polygon(
+                [
+                    [7.1, 7.0],
+                    [9.1, 9.0],
+                    [7.1, 11.0],
+                    [5.1, 9.0],
+                    [7.1, 7.0],
+                ]
+            ),
+            shapely.geometry.Polygon(
+                [
+                    [1.0, 1.0],
+                    [3.0, 1.0],
+                    [3.0, 3.0],
+                    [1.0, 3.0],
+                    [1.0, 1.0],
+                ]
+            ),
+        ]
+    )
     contained = _calc_and_compare(poly, dummy_co2_masses)
     assert contained.gas_contained.values[-1] == pytest.approx(123.70267352027123)
     assert contained.aqueous_contained.values[-1] == pytest.approx(252.79970312163525)
@@ -135,24 +145,28 @@ def test_multi_poly_co2_containment():
 
 
 def test_hazardous_poly_co2_containment():
-    """"
+    """ "
     Test CO2 containment code, with hazardous polygon
     """
     dummy_co2_masses = _get_dummy_co2_masses()
     assert len(dummy_co2_masses.data_list) == 10
-    poly = shapely.geometry.Polygon([
-        [7.1, 7.0],
-        [9.1, 9.0],
-        [7.1, 11.0],
-        [5.1, 9.0],
-        [7.1, 7.0],
-    ])
-    poly_hazardous = shapely.geometry.Polygon([
-        [9.1, 9.0],
-        [9.1, 11.0],
-        [7.1, 11.0],
-        [9.1, 9.0],
-    ])
+    poly = shapely.geometry.Polygon(
+        [
+            [7.1, 7.0],
+            [9.1, 9.0],
+            [7.1, 11.0],
+            [5.1, 9.0],
+            [7.1, 7.0],
+        ]
+    )
+    poly_hazardous = shapely.geometry.Polygon(
+        [
+            [9.1, 9.0],
+            [9.1, 11.0],
+            [7.1, 11.0],
+            [9.1, 9.0],
+        ]
+    )
     contained = _calc_and_compare(poly, dummy_co2_masses, poly_hazardous)
     assert contained.gas_contained.values[-1] == pytest.approx(90.262207)
     assert contained.aqueous_contained.values[-1] == pytest.approx(172.72921760648467)
@@ -161,7 +175,7 @@ def test_hazardous_poly_co2_containment():
 
 
 def test_reek_grid():
-    """"
+    """ "
     Test CO2 containment code, with eclipse Reek data.
     Tests both mass and volume_actual calculations.
     """
@@ -173,19 +187,23 @@ def test_reek_grid():
         / "model"
         / "2_R001_REEK-0.EGRID"
     )
-    reek_poly = shapely.geometry.Polygon([
-        [461339, 5932377],
-        [461339 + 1000, 5932377],
-        [461339 + 1000, 5932377 + 1000],
-        [461339, 5932377 + 1000],
-    ])
-    reek_poly_hazardous = shapely.geometry.Polygon([
-        [461339 + 1000, 5932377],
-        [461339 + 2000, 5932377],
-        [461339 + 2000, 5932377 + 1000],
-        [461339 + 1000, 5932377 + 1000],
-        [461339 + 1000, 5932377],
-    ])
+    reek_poly = shapely.geometry.Polygon(
+        [
+            [461339, 5932377],
+            [461339 + 1000, 5932377],
+            [461339 + 1000, 5932377 + 1000],
+            [461339, 5932377 + 1000],
+        ]
+    )
+    reek_poly_hazardous = shapely.geometry.Polygon(
+        [
+            [461339 + 1000, 5932377],
+            [461339 + 2000, 5932377],
+            [461339 + 2000, 5932377 + 1000],
+            [461339 + 1000, 5932377 + 1000],
+            [461339 + 1000, 5932377],
+        ]
+    )
     grid = xtgeo.grid_from_file(reek_gridfile)
     poro = xtgeo.gridproperty_from_file(
         reek_gridfile.with_suffix(".INIT"), name="PORO", grid=grid
@@ -210,7 +228,7 @@ def test_reek_grid():
         containment_polygon=reek_poly,
         hazardous_polygon=reek_poly_hazardous,
         compact=False,
-        calc_type_input="mass"
+        calc_type_input="mass",
     )
     assert table.total.values[0] == pytest.approx(696171.20388324)
     assert table.total_gas.values[0] == pytest.approx(7650.233009712884)
@@ -228,7 +246,7 @@ def test_reek_grid():
         containment_polygon=reek_poly,
         hazardous_polygon=reek_poly_hazardous,
         compact=False,
-        calc_type_input="volume_actual_simple"
+        calc_type_input="volume_actual_simple",
     )
     assert table2.total.values[0] == pytest.approx(358.1699999999088)
     assert table2.total_gas.values[0] == pytest.approx(35.81700000000973)
