@@ -280,7 +280,8 @@ def _extract_source_data(
         raise RuntimeError(error_text)
     global_active_idx = active[~gasless]
     properties = _reduce_properties(properties, ~gasless)
-    xyz = [grid.get_xyz(global_index=a) for a in global_active_idx]  # Tuple with (x,y,z) for each cell
+    # Tuple with (x,y,z) for each cell:
+    xyz = [grid.get_xyz(global_index=a) for a in global_active_idx]
     cells_x = np.array([coord[0] for coord in xyz])
     cells_y = np.array([coord[1] for coord in xyz])
     zone = None
@@ -371,8 +372,10 @@ def _pflotran_co2mass(source_data: SourceData,
     co2_mass = {}
     for t in dates:
         co2_mass[t] = [
-            eff_vols[t] * (1-sgas[t]) * dwat[t] * _mole_to_mass_fraction(amfg[t], co2_molar_mass, water_molar_mass),
-            eff_vols[t] * sgas[t] * dgas[t] * _mole_to_mass_fraction(ymfg[t], co2_molar_mass, water_molar_mass)
+            eff_vols[t] * (1-sgas[t]) * dwat[t]
+            * _mole_to_mass_fraction(amfg[t], co2_molar_mass, water_molar_mass),
+            eff_vols[t] * sgas[t] * dgas[t]
+            * _mole_to_mass_fraction(ymfg[t], co2_molar_mass, water_molar_mass)
             ]
     return co2_mass
 
@@ -390,7 +393,7 @@ def _eclipse_co2mass(source_data: SourceData,
     Returns:
       Dict
     
-    """              
+    """
     dates = source_data.DATES
     bgas = source_data.BGAS
     bwat = source_data.BWAT
@@ -424,7 +427,7 @@ def _pflotran_co2_molar_volume(source_data: SourceData,
     Returns:
       Dict
     
-    """                          
+    """
     dates = source_data.DATES
     dgas = source_data.DGAS
     dwat = source_data.DWAT
@@ -432,17 +435,23 @@ def _pflotran_co2_molar_volume(source_data: SourceData,
     amfg = source_data.AMFG
     co2_molar_vol = {}
     for t in dates:
-        co2_molar_vol[t] = [(1 / amfg[t]) * (-water_molar_mass * (1 - amfg[t]) / (1000 * water_density) +
-                                             (co2_molar_mass * amfg[t] + water_molar_mass * (1 - amfg[t])) / (
-                                                         1000 * dwat[t]))
+        co2_molar_vol[t] = [(1 / amfg[t]) *
+                            (-water_molar_mass * (1 - amfg[t]) / (1000 * water_density) +
+                            (co2_molar_mass * amfg[t] + water_molar_mass * (1 - amfg[t])) /
+                            (1000 * dwat[t]))
                             if not all(amfg[t]) == 0 else amfg[t],
-                            (1 / ymfg[t]) * (-water_molar_mass * (1 - ymfg[t]) / (1000 * water_density) +
-                                             (co2_molar_mass * ymfg[t] + water_molar_mass * (1 - ymfg[t])) / (
-                                                         1000 * dgas[t]))
+                            (1 / ymfg[t]) *
+                            (-water_molar_mass * (1 - ymfg[t]) / (1000 * water_density) +
+                            (co2_molar_mass * ymfg[t] + water_molar_mass * (1 - ymfg[t])) /
+                            (1000 * dgas[t]))
                             if not all(ymfg[t]) == 0 else ymfg[t]
                             ]
-        co2_molar_vol[t][0] = [0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][0], amfg[t])]
-        co2_molar_vol[t][1] = [0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][1], ymfg[t])]
+        co2_molar_vol[t][0] = [
+            0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][0], amfg[t])
+        ]
+        co2_molar_vol[t][1] = [
+            0 if x < 0 or y == 0 else x for x, y in zip(co2_molar_vol[t][1], ymfg[t])
+        ]
     return co2_molar_vol
 
 
