@@ -18,6 +18,9 @@ PROPERTIES_TO_EXTRACT = ["RPORV", "PORV", "SGAS", "DGAS", "BGAS", "DWAT",
 
 
 class CalculationType(Enum):
+    """
+    Which type of calculation type is made
+    """
     mass = 0
     volume_extent = 1
     volume_actual = 2
@@ -30,6 +33,30 @@ class CalculationType(Enum):
 
 @dataclass
 class SourceData:
+    """
+    Dataclass with grid cell (x,y) coordinates, dates 
+    and properties (if available)
+
+    Args:
+      x (np.ndarray): x coordinates for grid cells
+      y (np.ndarray): y coordinates for grid cells
+      DATES (List): Time steps each property is available for
+      VOL (Dict): Grid cells volume (m3) at each date
+      SWAT (Dict): Water saturation for each grid cell at each date
+      SGAS (Dict): Gas saturation for each grid cell at each date
+      RPORV (Dict): Pore volume (VOL x Porosity) for each grid cell at each date
+      PORV (Dict): Pore volume (VOL x Porosity) for each grid cell at each date
+      AMFG (Dict): Aqueous mole fraction of gas for each grid cell at each date
+      YMFG (Dict): Gaseous mole fraction of gas for each grid cell at each date
+      XMF2 (Dict): Aqueous mole fraction of gas for each grid cell at each date                
+      YMF2 (Dict): Gaseous mole fraction of gas for each grid cell at each date
+      DWAT (Dict): Water density (kg/m3) for each grid cell at each date
+      DGAS (Dict): Gas density (kg/m3) for each grid cell at each date
+      BWAT (Dict): Water density (kg-mol/mol) for each grid cell at each date
+      BGAS (Dict): Gas density (kg-mol/mol) for each grid cell at each date
+      zone (np.ndarray): 
+      
+    """
     x: np.ndarray
     y: np.ndarray
     DATES: List[str]
@@ -51,17 +78,44 @@ class SourceData:
 
 @dataclass
 class Co2DataAtTimeStep:
+    """
+    Dataclass with amount of co2 for each phase (dissolved/gas/undefined)
+    at a given time step.
+
+    Args:
+      date (str): The time step
+      aqu_phase (np.ndarray): The amount of CO2 in aqueous phase
+      gas_phase (np.ndarray): The amount of CO2 in gaseous phase
+      volume_covarage (np.ndarray): The volume of a cell (specific of 
+                                    calc_type_input = volume_extent)
+    """
     date: str
     aqu_phase: Optional[np.ndarray]
     gas_phase: Optional[np.ndarray]
     volume_coverage: Optional[np.ndarray] = None
 
     def total_mass(self) -> np.ndarray:
+        """
+        Computes total mass as the sum of gas in aqueous and gas
+        phase.
+        """
         return self.aqu_phase + self.gas_phase
 
 
 @dataclass
 class Co2Data:
+    """
+    Dataclass with amount of CO2 at (x,y) coordinates
+
+    Args:
+      x (np.ndarray): x coordinates
+      y (np.ndarray): y coordinates
+      data_list (List): List with CO2 amounts calculated
+                        at multiple time steps
+      units (Literal): Units of the calculated amount of CO2
+      zone (np.ndarray): 
+      
+    """
     x: np.ndarray
     y: np.ndarray
     data_list: List[Co2DataAtTimeStep]
@@ -71,6 +125,17 @@ class Co2Data:
 
 def _try_prop(unrst: EclFile,
               prop_name: str):
+    """
+    Function to determine if a property (prop_name) is part of an EclFile (unrst)
+
+    Args:
+      unrst (EclFile): EclFile to fetch property names from
+      prop_name (str): The property name to be searched in unrst
+
+    Returns:
+      str if prop_names exists in unrst, None otherwise
+    
+    """
     try:
         prop = unrst[prop_name]
     except KeyError:
@@ -82,6 +147,16 @@ def _read_props(
         unrst: EclFile,
         prop_names: List,
 ) -> dict:
+    """
+    Reads the properties in prop_names from an EclFile named unrst
+
+    Args:
+      unrst (EclFile): EclFile to read prop_names from
+      prop_names (List): List with property names to be read
+
+    Returns:
+      dict
+    """
     props_att = {p: _try_prop(unrst, p) for p in prop_names}
     act_prop_names = [k for k in prop_names if props_att[k] is not None]
     act_props = {k: props_att[k] for k in act_prop_names}
@@ -92,6 +167,18 @@ def _fetch_properties(
         unrst: EclFile,
         properties_to_extract: List
 ) -> Tuple[Dict[str, Dict[str, List[np.ndarray]]], List[str]]:
+    """
+    Fetches the properties in properties_to_extract from an EclFile
+    named unrst
+    
+    Args:
+      unrst (EclFile): EclFile to fetch properties_to_extract from
+      properties_to_extract: List with property names to be fetched
+      
+    Returns:
+      Tuple
+    
+    """
     dates = [d.strftime("%Y%m%d") for d in unrst.report_dates]
     properties = _read_props(unrst, properties_to_extract)
     properties = {p: {d[1]: properties[p][d[0]].numpy_copy()
@@ -104,6 +191,18 @@ def _identify_gas_less_cells(
         sgases: dict,
         amfgs: dict
 ) -> np.ndarray:
+    """
+    Identifies those cells that do not have gas. This is done based on thresholds for
+    SGAS and AMFG.
+
+    Args:
+      sgases (dict): The values of SGAS for each grid cell
+      amfgs (dict): The values of AMFG for each grid cell
+
+    Returns:
+      np.ndarray     
+    
+    """
     gas_less = np.logical_and.reduce([np.abs(sgases[s]) < TRESHOLD_SGAS for s in sgases])
     gas_less &= np.logical_and.reduce([np.abs(amfgs[a]) < TRESHOLD_AMFG for a in amfgs])
     return gas_less
@@ -111,10 +210,33 @@ def _identify_gas_less_cells(
 
 def _reduce_properties(properties: Dict[str, Dict[str, List[np.ndarray]]],
                        keep_idx: np.ndarray) -> Dict:
+    """
+    Reduces the data of given properties by indices in keep_idx
+
+    Args:
+      properties (Dict): Data with values of properties
+      keep_idx (np.ndarray): Which indices are retained
+
+    Returns:
+      Dict
+    
+    """
     return {p: {d: properties[p][d][keep_idx] for d in properties[p]} for p in properties}
 
 
 def _is_subset(first: List[str], second: List[str]) -> bool:
+    """
+    Determines if the elements of a list (first) are part of 
+    another list (second)
+
+    Args:
+      first (List): The list whose elements are searched in second
+      second (List): The list where elements of first are searched
+
+    Returns:
+      bool
+    
+    """
     return all(x in second for x in first)
 
 
@@ -125,6 +247,20 @@ def _extract_source_data(
         init_file: Optional[str] = None,
         zone_file: Optional[str] = None
 ) -> SourceData:
+    """
+    Extracts the properties in properties_to_extract from EclGrid files
+
+    Args:
+      grid_file (str): Path to EGRID-file
+      unrst_file (str): Path to UNRST-file
+      properties_to_extract (List): Names of the properties to be extracted
+      init_file (str): Path to INIT-file
+      zone_file (str):
+
+    Returns:
+      SourceData
+    
+    """
     print("Start extracting source data")
     grid = EclGrid(grid_file)
     unrst = EclFile(unrst_file)
@@ -173,10 +309,32 @@ def _extract_source_data(
 def _mole_to_mass_fraction(x: np.ndarray,
                            m_co2: float,
                            m_h20: float) -> np.ndarray:
+    """
+    Converts from mole fraction to mass fraction
+
+    Args:
+      x (np.ndarray): Information with mole fractions to be converted
+      m_co2 (float): Molar mass of CO2
+      m_h20 (float): Molar mass of H2O
+
+    Returns:
+      np.ndarray
+    
+    """
     return x * m_co2 / (m_h20 + (m_co2 - m_h20) * x)
 
 
 def _set_calc_type_from_input_string(calc_type_input: str) -> CalculationType:
+    """
+    Creates a CalculationType object from an input string
+
+    Args:
+      calc_type_input (str): Input string with calculation type to perform
+
+    Returns:
+      CalculationType
+    
+    """
     if CalculationType.check_for_key(calc_type_input) == False:
         error_text = "Illegal calculation type: " + calc_type_input
         error_text += "\nValid options:"
@@ -190,6 +348,19 @@ def _set_calc_type_from_input_string(calc_type_input: str) -> CalculationType:
 def _pflotran_co2mass(source_data: SourceData,
                       co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
                       water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
+    """
+    Calculates CO2 mass based on the existing properties in PFlotran
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties 
+                                for the calculation of CO2 mass
+      co2_molar_mass (float): CO2 molar mass - Default is 44 g/mol
+      water_molar_mass (float): Water molar mass - Default is 18 g/mol
+      
+    Returns:
+      Dict
+    
+    """
     dates = source_data.DATES
     dwat = source_data.DWAT
     dgas = source_data.DGAS
@@ -208,6 +379,18 @@ def _pflotran_co2mass(source_data: SourceData,
 
 def _eclipse_co2mass(source_data: SourceData,
                      co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS) -> Dict:
+    """
+    Calculates CO2 mass based on the existing properties in Eclipse
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties 
+                                for the calculation of CO2 mass
+      co2_molar_mass (float): CO2 molar mass - Default is 44 g/mol
+      
+    Returns:
+      Dict
+    
+    """              
     dates = source_data.DATES
     bgas = source_data.BGAS
     bwat = source_data.BWAT
@@ -225,9 +408,23 @@ def _eclipse_co2mass(source_data: SourceData,
 
 
 def _pflotran_co2_molar_volume(source_data: SourceData,
-                               water_density: np.ndarray,
+                               water_density: Union[float, np.ndarray] = DEFAULT_WATER_DENSITY,
                                co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
                                water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
+    """
+    Calculates CO2 molar volume (mol/m3) based on the existing properties in PFlotran
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties 
+                                for the calculation of CO2 molar volume
+      water_density (float): Water density - Default is 1000 kg/m3
+      co2_molar_mass (float): CO2 molar mass - Default is 44 g/mol
+      water_molar_mass (float): Water molar mass - Default is 18 g/mol
+      
+    Returns:
+      Dict
+    
+    """                          
     dates = source_data.DATES
     dgas = source_data.DGAS
     dwat = source_data.DWAT
@@ -251,6 +448,20 @@ def _pflotran_co2_molar_volume(source_data: SourceData,
 
 def _eclipse_co2_molar_volume(source_data, water_density: Union[float, np.ndarray] = DEFAULT_WATER_DENSITY,
                               water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS) -> Dict:
+    """
+    Calculates CO2 molar volume (mol/m3) based on the existing properties in Eclipse
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties 
+                                for the calculation of CO2 molar volume
+      water_density (float): Water density - Default is 1000 kg/m3
+      co2_molar_mass (float): CO2 molar mass - Default is 44 g/mol
+      water_molar_mass (float): Water molar mass - Default is 18 g/mol
+      
+    Returns:
+      Dict
+    
+    """                                  
     dates = source_data.DATES
     bgas = source_data.BGAS
     bwat = source_data.BWAT
@@ -268,6 +479,17 @@ def _eclipse_co2_molar_volume(source_data, water_density: Union[float, np.ndarra
 
 
 def _pflotran_co2_simple_volume(source_data: SourceData) -> Dict:
+    """
+    Calculates CO2 "simple" volume based on the existing properties in PFlotran
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties 
+                                for the calculation of CO2 "simple" volume
+
+    Returns: 
+      Dict
+    
+    """
     dates = source_data.DATES
     sgas = source_data.SGAS
     ymfg = source_data.YMFG
@@ -280,6 +502,17 @@ def _pflotran_co2_simple_volume(source_data: SourceData) -> Dict:
 
 
 def _eclipse_co2_simple_volume(source_data: SourceData) -> Dict:
+    """
+    Calculates CO2 "simple" volume based on the existing properties in Eclipse
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties 
+                                for the calculation of CO2 "simple" volume
+
+    Returns: 
+      Dict
+    
+    """
     dates = source_data.DATES
     sgas = source_data.SGAS
     xmf2 = source_data.XMF2
@@ -297,6 +530,22 @@ def _calculate_co2_data_from_source_data(
         co2_molar_mass: float = DEFAULT_CO2_MOLAR_MASS,
         water_molar_mass: float = DEFAULT_WATER_MOLAR_MASS,
         ) -> Co2Data:
+    """
+    Calculates a given calc_type (mass/volume_extent/volume_actual/volume_actual_simple)
+    from properties in source_data.
+
+    Args:
+      source_data (SourceData): Data with the information of the necessary properties
+                                for the calculation of calc_type
+      calc_type (CalculationType): Which amount is calculated (mass/volume_extent/
+                                   volume_actual/volume_actual_simple)
+      co2_molar_mass (float): CO2 molar mass - Default is 44 g/mol
+      water_molar_mass (float): Water molar mass - Default is 18 g/mol
+
+    Returns:
+      Co2Data
+    """
+    
     props_check = [x.name for x in fields(source_data) if x.name not in ["x", "y", "DATES", "zone", "VOL"]]
     active_props_idx = np.where([getattr(source_data, x) is not None for x in props_check])[0]
     active_props = [props_check[i] for i in active_props_idx]
@@ -416,6 +665,20 @@ def calculate_co2(
         init_file: Optional[str] = None,
         zone_file: Optional[str] = None
 ) -> Co2Data:
+    """
+    Calculates the desired amount (calc_type_input) of CO2
+
+    Args:
+      grid_file (str): Path to EGRID-file
+      unrst_file (str): Path to UNRST-file
+      calc_type_input (str): Input string with calculation type to perform
+      init_file (str): Path to INIT-file
+      zone_file (str):
+
+    Returns:
+      CO2Data    
+    
+    """
     source_data = _extract_source_data(
         grid_file,
         unrst_file,
