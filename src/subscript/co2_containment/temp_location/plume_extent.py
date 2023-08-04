@@ -4,7 +4,6 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
-import csv
 
 from ecl.eclfile import EclFile
 from ecl.grid import EclGrid
@@ -40,30 +39,30 @@ def calc_plume_extents(
     threshold_sgas=DEFAULT_THRESHOLD_SGAS,
     threshold_amfg=DEFAULT_THRESHOLD_AMFG,
 ):
-    g = EclGrid("{}.EGRID".format(case))
-    rs = EclFile("{}.UNRST".format(case))
+    grid = EclGrid("{}.EGRID".format(case))
+    unrst = EclFile("{}.UNRST".format(case))
 
     # First calculate distance from injection point to center of all cells
-    nactive = g.get_num_active()
+    nactive = grid.get_num_active()
     dist = np.zeros(shape=(nactive,))
     for i in range(nactive):
-        center = g.get_xyz(active_index=i)
+        center = grid.get_xyz(active_index=i)
         dist[i] = np.sqrt( (center[0]-injxy[0])**2 + (center[1]-injxy[1])**2 )
 
-    sgas_results = calc_plume_extent("SGAS", threshold_sgas, rs, dist)
+    sgas_results = find_max_distances_per_time_step("SGAS", threshold_sgas, unrst, dist)
     print(sgas_results)
-    amfg_results = calc_plume_extent("AMFG", threshold_amfg, rs, dist)
+    amfg_results = find_max_distances_per_time_step("AMFG", threshold_amfg, unrst, dist)
     print(amfg_results)
 
     return (sgas_results, amfg_results)
 
 
-def calc_plume_extent(rskey, threshold, rs, dist):
+def find_max_distances_per_time_step(attribute_key, threshold, unrst, dist):
     # Find max plume distance for each step
-    nsteps = len(rs.report_steps)
+    nsteps = len(unrst.report_steps)
     dist_vs_date = np.zeros(shape=(nsteps,))
     for i in range(nsteps):
-        data = rs[rskey][i].numpy_view()
+        data = unrst[attribute_key][i].numpy_view()
         plumeix = np.where(data > threshold)[0]
         maxdist = 0.0
         if len(plumeix) > 0:
@@ -72,27 +71,14 @@ def calc_plume_extent(rskey, threshold, rs, dist):
         dist_vs_date[i] = maxdist
 
     output = []
-    for i, d in enumerate(rs.report_dates):
+    for i, d in enumerate(unrst.report_dates):
         temp = [d.strftime('%Y-%m-%d'), dist_vs_date[i]]
         output.append(temp)
 
     return output
 
 
-def main():
-    args = make_parser().parse_args()
-    case = args.case
-    injxy = (args.injx, args.injy)
-    threshold_sgas = args.threshold_sgas
-    threshold_amfg = args.threshold_amfg
-
-    (sgas_results, amfg_results) = calc_plume_extents(
-        case,
-        injxy,
-        threshold_sgas,
-        threshold_amfg,
-    )
-    
+def export_to_csv(sgas_results, amfg_results):
     # Convert into Pandas DataFrames
     sgas_df = pd.DataFrame.from_records(sgas_results, columns=["DATE", "MAX_DISTANCE_SGAS"])
     amfg_df = pd.DataFrame.from_records(amfg_results, columns=["DATE", "MAX_DISTANCE_AMFG"])
@@ -102,6 +88,19 @@ def main():
 
     # Export to CSV
     df.to_csv("share/results/tables/plumeextent.csv", index=False)
+
+
+def main():
+    args = make_parser().parse_args()
+
+    (sgas_results, amfg_results) = calc_plume_extents(
+        args.case,
+        (args.injx, args.injy),
+        args.threshold_sgas,
+        args.threshold_amfg,
+    )
+
+    export_to_csv(sgas_results, amfg_results)
 
     return 0
 
