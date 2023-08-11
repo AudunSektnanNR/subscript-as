@@ -27,9 +27,23 @@ def __make_parser():
 
 
 def __find_formations(search_path, rskey):
-    formation_list = []
+    # Try different capitalizations of rskey:
+    file_names_1 = glob.glob(search_path + "*max_" + rskey + "*.gri")
+    file_names_2 = glob.glob(search_path + "*max_" + rskey.lower() + "*.gri")
+    file_names_3 = glob.glob(search_path + "*max_" + rskey.upper() + "*.gri")
 
-    for file in glob.glob(search_path + "*max_" + rskey + "*.gri"):
+    if file_names_1:
+        rskey_updated = rskey
+    elif file_names_2:
+        rskey_updated = rskey.lower()
+    elif file_names_3:
+        rskey_updated = rskey.upper()
+    else:
+        text = f"No surface files found."
+        raise FileNotFoundError(text)
+
+    formation_list = []
+    for file in glob.glob(search_path + "*max_" + rskey_updated + "*.gri"):
         fm_name = pathlib.Path(file).stem.split("--")[0]
 
         if fm_name in formation_list:
@@ -37,22 +51,22 @@ def __find_formations(search_path, rskey):
         else:
             formation_list.append(fm_name)
 
-    return formation_list
+    return formation_list, rskey_updated
 
 
-def __find_dates(search_path, fm, rskey):
-    date_list = []
+def __find_years(search_path, fm, rskey):
+    years_list = []
 
     for file in glob.glob(search_path + fm[0] + "*max_" + rskey + "*.gri"):
         full_date = pathlib.Path(file).stem.split("--")[2]
         year = full_date[0:4]
 
-        if year in date_list:
+        if year in years_list:
             pass
         else:
-            date_list.append(year)
+            years_list.append(year)
 
-    return date_list
+    return years_list
 
 
 def __neigh_nodes(x):  # If all the four nodes of the cell are not masked we count the area
@@ -64,26 +78,27 @@ def __neigh_nodes(x):  # If all the four nodes of the cell are not masked we cou
 def calc_plume_area(path, rskey):
     print("*** Calculating plume area for: " + rskey + " ***")
 
-    formations = np.array(__find_formations(path, rskey))
+    formations, rskey_updated = np.array(__find_formations(path, rskey))
     print("Formations found: ", formations)
 
-    dates = np.array(__find_dates(path, formations, rskey))
-    print("Dates found: ", dates)
+    years = np.array(__find_years(path, formations, rskey_updated))
+    print("Dates found: ", years)
 
     # area_array = (product(formation, var, year))  # Not used anymore?
 
-    var = "max_" + rskey
+    var = "max_" + rskey_updated
     dict_out = []
     for fm in formations:
-        for date in dates:
-            path_file = glob.glob(path + fm + "--" + var + "--" + date + "*.gri")
-            # path_file = path + fm + "--" + var + "--" + date + "0101.gri"
+        for year in years:
+            print(path + fm + "--" + var + "--" + year + "*.gri")
+            path_file = glob.glob(path + fm + "--" + var + "--" + year + "*.gri")
+            # path_file = path + fm + "--" + var + "--" + year + "0101.gri"
             mysurf = xtgeo.surface_from_file(path_file[0])
             use_nodes = np.ma.nonzero(mysurf.values)  # Indexes of the existing nodes
             use_nodes = set(list(tuple(zip(use_nodes[0], use_nodes[1]))))
             all_neigh_nodes = list(map(__neigh_nodes, use_nodes))
             test0 = [xx.issubset(use_nodes) for xx in all_neigh_nodes]
-            dict_out_temp = [float(date), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
+            dict_out_temp = [float(year), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
             dict_out.append(dict_out_temp)
 
     return dict_out
@@ -113,11 +128,11 @@ def __convert_to_data_frame(results, rskey):
 def main():
     path = __read_args()
 
-    sgas_results = calc_plume_area(path, "SGAS")  # Or sgas
+    sgas_results = calc_plume_area(path, "sgas")
     if sgas_results:
         print("SGAS plume areas sucessfully collected.")
 
-    amfg_results = calc_plume_area(path, "AMFG")  # Or amfg
+    amfg_results = calc_plume_area(path, "amfg")
     if amfg_results:
         print("AMFG plume areas sucessfully collected.")
 
