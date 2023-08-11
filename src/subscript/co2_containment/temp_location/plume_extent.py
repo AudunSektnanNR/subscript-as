@@ -16,6 +16,7 @@ DEFAULT_THRESHOLD_AMFG = 0.0005
 def __make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Calculate plume extent (distance)")
     parser.add_argument("case", help="Name of Eclipse case")
+    parser.add_argument("well_name", help="Name of injection well to calculate plume extent from")
     parser.add_argument(
         "--output",
         help="Path to output CSV file",
@@ -68,7 +69,9 @@ def calc_plume_extents(
 
 
 def __find_max_distances_per_time_step(attribute_key: str, threshold: float, unrst: EclFile, dist: np.ndarray) -> List[List]:
-    # Find max plume distance for each step
+    '''
+    Find max plume distance for each step
+    '''
     nsteps = len(unrst.report_steps)
     dist_vs_date = np.zeros(shape=(nsteps,))
     for i in range(nsteps):
@@ -100,6 +103,13 @@ def __export_to_csv(sgas_results: List[List], amfg_results: List[List], output_f
     df.to_csv(output_file, index=False)
 
 
+def __calculate_well_coordinates(well_name: str):
+    '''
+    Find coordinates of injection point
+    '''
+    pass
+
+
 def main():
     '''
     Calculate plume extent using EGRID and UNRST-files. Calculated for SGAS
@@ -107,9 +117,11 @@ def main():
     '''
     args = __make_parser().parse_args()
 
+    injxy = __calculate_well_coordinates(args.well_name)
+
     (sgas_results, amfg_results) = calc_plume_extents(
         args.case,
-        (args.injx, args.injy),
+        injxy,
         args.threshold_sgas,
         args.threshold_amfg,
     )
