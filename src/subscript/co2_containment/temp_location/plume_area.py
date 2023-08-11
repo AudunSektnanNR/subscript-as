@@ -23,7 +23,11 @@ from typing import List, Tuple
 def __make_parser():
     parser = argparse.ArgumentParser(description="Calculate plume area")
     parser.add_argument("input", help="Path to maps created through XTGeoapp")
-    parser.add_argument("--output", help="Path to output CSV file", default = "share/results/tables/plumearea.csv")
+    parser.add_argument(
+        "--output",
+        help="Path to output CSV file",
+        default="share/results/tables/plumearea.csv",
+    )
 
     return parser
 
@@ -79,10 +83,10 @@ def __neigh_nodes(x: Tuple[np.int64, np.int64]) -> set:
 
 
 def calc_plume_area(path: str, rskey: str) -> List[List[float]]:
-    '''
+    """
     Finds plume area for each formation and year for a given rskey (for instance
     SGAS or AMFG). The plume areas are found using data from surface files (.gri).
-    '''
+    """
     print("*** Calculating plume area for: " + rskey + " ***")
 
     formations, rskey_updated = __find_formations(path, rskey)
@@ -101,7 +105,11 @@ def calc_plume_area(path: str, rskey: str) -> List[List[float]]:
             use_nodes = set(list(tuple(zip(use_nodes[0], use_nodes[1]))))
             all_neigh_nodes = list(map(__neigh_nodes, use_nodes))
             test0 = [xx.issubset(use_nodes) for xx in all_neigh_nodes]
-            list_out_temp = [float(year), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
+            list_out_temp = [
+                float(year),
+                float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)),
+                fm,
+            ]
             list_out.append(list_out_temp)
 
     return list_out
@@ -121,20 +129,22 @@ def __read_args() -> Tuple[str, str]:
 
 def __convert_to_data_frame(results: List[List[float]], rskey: str) -> pd.DataFrame:
     # Convert into Pandas DataFrame
-    df = pd.DataFrame.from_records(results, columns=["DATE", "AREA_"+rskey, "FORMATION_"+rskey])
-    df = df.pivot(index="DATE", columns="FORMATION_"+rskey, values="AREA_"+rskey)
+    df = pd.DataFrame.from_records(
+        results, columns=["DATE", "AREA_" + rskey, "FORMATION_" + rskey]
+    )
+    df = df.pivot(index="DATE", columns="FORMATION_" + rskey, values="AREA_" + rskey)
     df.reset_index(inplace=True)
     df.columns.name = None
-    df.columns = [x + "_"+rskey if x != "DATE" else x for x in df.columns]
+    df.columns = [x + "_" + rskey if x != "DATE" else x for x in df.columns]
     return df
 
 
 def main():
-    '''
+    """
     Reads directory of input surface files (.gri) and calculates plume area
     for SGAS and AMFG per formation and year. Collects the results into a CSV
     file.
-    '''
+    """
     input_path, output_path = __read_args()
 
     sgas_results = calc_plume_area(input_path, "sgas")
