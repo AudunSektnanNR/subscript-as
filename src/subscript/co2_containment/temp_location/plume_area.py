@@ -2,7 +2,8 @@
 
 
 ################################################################################
-# Script calculating the area extent of the plume depending on which map / date are present in the share/results/maps folder
+# Script calculating the area extent of the plume depending on which map / date
+# are present in the share/results/maps folder
 #
 # Created by : Jorge Sicacha (NR), Oct 2022
 # Modified by: Floriane Mortier (fmmo), Nov 2022 - To fit FMU workflow
@@ -46,7 +47,7 @@ def __find_formations(search_path: str, rskey: str) -> Tuple[np.ndarray, str]:
     elif file_names_3:
         rskey_updated = rskey.upper()
     else:
-        text = f"No surface files found."
+        text = "No surface files found."
         raise FileNotFoundError(text)
 
     formation_list = []
