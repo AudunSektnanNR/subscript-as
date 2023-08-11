@@ -25,12 +25,6 @@ def __make_parser() -> argparse.ArgumentParser:
         default="share/results/tables/plumeextent.csv",
     )
     parser.add_argument(
-        "--injx", default=560593, type=float, help="X-coordinate of injection point"
-    )
-    parser.add_argument(
-        "--injy", default=6703786, type=float, help="Y-coordinate of injection point"
-    )
-    parser.add_argument(
         "--threshold_sgas",
         default=DEFAULT_THRESHOLD_SGAS,
         type=float,
