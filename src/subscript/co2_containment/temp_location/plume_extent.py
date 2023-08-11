@@ -4,6 +4,7 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
+from typing import List, Tuple
 
 from ecl.eclfile import EclFile
 from ecl.grid import EclGrid
@@ -12,9 +13,14 @@ DEFAULT_THRESHOLD_SGAS = 0.2
 DEFAULT_THRESHOLD_AMFG = 0.0005
 
 
-def make_parser():
+def __make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Calculate plume extent (distance)")
     parser.add_argument("case", help="Name of Eclipse case")
+    parser.add_argument(
+        "--output",
+        help="Path to output CSV file",
+        default="share/results/tables/plumeextent.csv",
+    )
     parser.add_argument("--injx", default=560593, type=float, help="X-coordinate of injection point")
     parser.add_argument("--injy", default=6703786, type=float, help="Y-coordinate of injection point")
     parser.add_argument(
@@ -34,11 +40,14 @@ def make_parser():
 
 
 def calc_plume_extents(
-    case,
-    injxy,
-    threshold_sgas=DEFAULT_THRESHOLD_SGAS,
-    threshold_amfg=DEFAULT_THRESHOLD_AMFG,
-):
+    case: str,
+    injxy: Tuple[int, int],
+    threshold_sgas: float = DEFAULT_THRESHOLD_SGAS,
+    threshold_amfg: float = DEFAULT_THRESHOLD_AMFG,
+) -> Tuple[List[List], List[List]]:
+    '''
+    Find plume extents per date for SGAS and AMFG.
+    '''
     grid = EclGrid("{}.EGRID".format(case))
     unrst = EclFile("{}.UNRST".format(case))
 
@@ -49,15 +58,16 @@ def calc_plume_extents(
         center = grid.get_xyz(active_index=i)
         dist[i] = np.sqrt( (center[0]-injxy[0])**2 + (center[1]-injxy[1])**2 )
 
-    sgas_results = find_max_distances_per_time_step("SGAS", threshold_sgas, unrst, dist)
+    sgas_results = __find_max_distances_per_time_step("SGAS", threshold_sgas, unrst, dist)
     print(sgas_results)
-    amfg_results = find_max_distances_per_time_step("AMFG", threshold_amfg, unrst, dist)
+
+    amfg_results = __find_max_distances_per_time_step("AMFG", threshold_amfg, unrst, dist)
     print(amfg_results)
 
     return (sgas_results, amfg_results)
 
 
-def find_max_distances_per_time_step(attribute_key, threshold, unrst, dist):
+def __find_max_distances_per_time_step(attribute_key: str, threshold: float, unrst: EclFile, dist: np.ndarray) -> List[List]:
     # Find max plume distance for each step
     nsteps = len(unrst.report_steps)
     dist_vs_date = np.zeros(shape=(nsteps,))
@@ -78,7 +88,7 @@ def find_max_distances_per_time_step(attribute_key, threshold, unrst, dist):
     return output
 
 
-def export_to_csv(sgas_results, amfg_results):
+def __export_to_csv(sgas_results: List[List], amfg_results: List[List], output_file: str):
     # Convert into Pandas DataFrames
     sgas_df = pd.DataFrame.from_records(sgas_results, columns=["DATE", "MAX_DISTANCE_SGAS"])
     amfg_df = pd.DataFrame.from_records(amfg_results, columns=["DATE", "MAX_DISTANCE_AMFG"])
@@ -87,11 +97,15 @@ def export_to_csv(sgas_results, amfg_results):
     df = pd.merge(sgas_df, amfg_df, on="DATE")
 
     # Export to CSV
-    df.to_csv("share/results/tables/plumeextent.csv", index=False)
+    df.to_csv(output_file, index=False)
 
 
 def main():
-    args = make_parser().parse_args()
+    '''
+    Calculate plume extent using EGRID and UNRST-files. Calculated for SGAS
+    and AMFG. Output is plume extent per date written to a CSV file.
+    '''
+    args = __make_parser().parse_args()
 
     (sgas_results, amfg_results) = calc_plume_extents(
         args.case,
@@ -100,7 +114,7 @@ def main():
         args.threshold_amfg,
     )
 
-    export_to_csv(sgas_results, amfg_results)
+    __export_to_csv(sgas_results, amfg_results, args.output)
 
     return 0
 
