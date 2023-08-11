@@ -22,6 +22,7 @@ import argparse
 def __make_parser():
     parser = argparse.ArgumentParser(description="Calculate plume area")
     parser.add_argument("input", help="Path to maps created through XTGeoapp")
+    parser.add_argument("--output", help="Path to output CSV file", default = "share/results/tables/plumearea.csv")
 
     return parser
 
@@ -106,13 +107,14 @@ def calc_plume_area(path, rskey):
 
 def __read_args():
     args = __make_parser().parse_args()
-    path = args.input
+    input_path = args.input
+    output_path = args.output
 
-    if not os.path.isdir(path):
-        text = f"Directory not found: {path}"
+    if not os.path.isdir(input_path):
+        text = f"Input surface directory not found: {input_path}"
         raise FileNotFoundError(text)
 
-    return path
+    return input_path, output_path
 
 
 def __convert_to_data_frame(results, rskey):
@@ -126,25 +128,24 @@ def __convert_to_data_frame(results, rskey):
 
 
 def main():
-    path = __read_args()
+    input_path, output_path = __read_args()
 
-    sgas_results = calc_plume_area(path, "sgas")
+    sgas_results = calc_plume_area(input_path, "sgas")
     if sgas_results:
         print("SGAS plume areas sucessfully collected.")
 
-    amfg_results = calc_plume_area(path, "amfg")
+    amfg_results = calc_plume_area(input_path, "amfg")
     if amfg_results:
         print("AMFG plume areas sucessfully collected.")
 
     sgas_df = __convert_to_data_frame(sgas_results, "SGAS")
     amfg_df = __convert_to_data_frame(amfg_results, "AMFG")
+
     # Merge them together
     df = pd.merge(sgas_df, amfg_df)
 
     # Export to CSV
-    # out = "share/results/tables/plumearea.csv"
-    out = "plume_area.csv"
-    df.to_csv(out, index=False)
+    df.to_csv(output_path, index=False)
 
     return 0
 
