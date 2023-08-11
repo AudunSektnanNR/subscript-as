@@ -4,23 +4,19 @@
 ################################################################################
 # Script calculating the area extent of the plume depending on which map / date are present in the share/results/maps folder
 #
-# Created by: Jorge Sicacha (NR), Oct 2022
-# Modfied by: Floriane Mortier (fmmo), Nov 2022 - To fit FMU workflow
+# Created by : Jorge Sicacha (NR), Oct 2022
+# Modified by: Floriane Mortier (fmmo), Nov 2022 - To fit FMU workflow
 #
 ################################################################################
 
-import sys
 import os
+import sys
 import glob
-import re
-from datetime import datetime
 import pandas as pd
 import xtgeo
 import numpy as np
 import pathlib
 from itertools import product
-from pathos.multiprocessing import ProcessingPool as Pool
-import plotly.graph_objects as go
 import argparse
 
 
@@ -70,6 +66,10 @@ def calc_plume_area(rskey):
     args = make_parser().parse_args()
     path = args.input
 
+    if not os.path.isdir(path):
+        text = f"Directory not found: {path}"
+        raise FileNotFoundError(text)
+
     var = "max_" + rskey
     print("***" + rskey + "***")
 
@@ -79,7 +79,7 @@ def calc_plume_area(rskey):
     year = np.array(find_dates(path, formation, rskey))
     print("Dates found: ", year)
 
-    area_array = (product(formation, var, year))
+    # area_array = (product(formation, var, year))  # Not used anymore?
 
     dict_out = []
     for fm in formation:
@@ -99,11 +99,11 @@ def calc_plume_area(rskey):
 
 
 def main():
-    sgas_results = calc_plume_area("sgas")
+    sgas_results = calc_plume_area("SGAS")  # Or sgas
     if sgas_results:
         print("Sgas areas sucessfully collected.")
 
-    amfg_results = calc_plume_area("amfg")
+    amfg_results = calc_plume_area("AMFG")  # Or amfg
     if amfg_results:
         print("Amfg areas sucessfully collected.")
 
@@ -123,7 +123,9 @@ def main():
     df = pd.merge(sgas_df, amfg_df)
 
     # Export to CSV
-    df.to_csv("share/results/tables/plumearea.csv", index=False)
+    # out = "share/results/tables/plumearea.csv"
+    out = "plume_area.csv"
+    df.to_csv(out, index=False)
 
     return 0
 
