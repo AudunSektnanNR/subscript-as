@@ -9,15 +9,16 @@
 #
 ################################################################################
 
-import os
-import sys
+import argparse
 import glob
+import os
+import pathlib
+import sys
+from typing import List, Tuple
+
+import numpy as np
 import pandas as pd
 import xtgeo
-import numpy as np
-import pathlib
-import argparse
-from typing import List, Tuple
 
 
 def __make_parser():

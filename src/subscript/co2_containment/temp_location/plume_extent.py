@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
-import pandas as pd
-import numpy as np
+import sys
 from typing import List, Tuple
 
+import numpy as np
+import pandas as pd
 from ecl.eclfile import EclFile
 from ecl.grid import EclGrid
 
