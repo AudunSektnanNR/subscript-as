@@ -16,14 +16,20 @@ DEFAULT_THRESHOLD_AMFG = 0.0005
 def __make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Calculate plume extent (distance)")
     parser.add_argument("case", help="Name of Eclipse case")
-    parser.add_argument("well_name", help="Name of injection well to calculate plume extent from")
+    parser.add_argument(
+        "well_name", help="Name of injection well to calculate plume extent from"
+    )
     parser.add_argument(
         "--output",
         help="Path to output CSV file",
         default="share/results/tables/plumeextent.csv",
     )
-    parser.add_argument("--injx", default=560593, type=float, help="X-coordinate of injection point")
-    parser.add_argument("--injy", default=6703786, type=float, help="Y-coordinate of injection point")
+    parser.add_argument(
+        "--injx", default=560593, type=float, help="X-coordinate of injection point"
+    )
+    parser.add_argument(
+        "--injy", default=6703786, type=float, help="Y-coordinate of injection point"
+    )
     parser.add_argument(
         "--threshold_sgas",
         default=DEFAULT_THRESHOLD_SGAS,
@@ -46,9 +52,9 @@ def calc_plume_extents(
     threshold_sgas: float = DEFAULT_THRESHOLD_SGAS,
     threshold_amfg: float = DEFAULT_THRESHOLD_AMFG,
 ) -> Tuple[List[List], List[List]]:
-    '''
+    """
     Find plume extents per date for SGAS and AMFG.
-    '''
+    """
     grid = EclGrid("{}.EGRID".format(case))
     unrst = EclFile("{}.UNRST".format(case))
 
@@ -57,21 +63,27 @@ def calc_plume_extents(
     dist = np.zeros(shape=(nactive,))
     for i in range(nactive):
         center = grid.get_xyz(active_index=i)
-        dist[i] = np.sqrt( (center[0]-injxy[0])**2 + (center[1]-injxy[1])**2 )
+        dist[i] = np.sqrt((center[0] - injxy[0]) ** 2 + (center[1] - injxy[1]) ** 2)
 
-    sgas_results = __find_max_distances_per_time_step("SGAS", threshold_sgas, unrst, dist)
+    sgas_results = __find_max_distances_per_time_step(
+        "SGAS", threshold_sgas, unrst, dist
+    )
     print(sgas_results)
 
-    amfg_results = __find_max_distances_per_time_step("AMFG", threshold_amfg, unrst, dist)
+    amfg_results = __find_max_distances_per_time_step(
+        "AMFG", threshold_amfg, unrst, dist
+    )
     print(amfg_results)
 
     return (sgas_results, amfg_results)
 
 
-def __find_max_distances_per_time_step(attribute_key: str, threshold: float, unrst: EclFile, dist: np.ndarray) -> List[List]:
-    '''
+def __find_max_distances_per_time_step(
+    attribute_key: str, threshold: float, unrst: EclFile, dist: np.ndarray
+) -> List[List]:
+    """
     Find max plume distance for each step
-    '''
+    """
     nsteps = len(unrst.report_steps)
     dist_vs_date = np.zeros(shape=(nsteps,))
     for i in range(nsteps):
@@ -85,16 +97,22 @@ def __find_max_distances_per_time_step(attribute_key: str, threshold: float, unr
 
     output = []
     for i, d in enumerate(unrst.report_dates):
-        temp = [d.strftime('%Y-%m-%d'), dist_vs_date[i]]
+        temp = [d.strftime("%Y-%m-%d"), dist_vs_date[i]]
         output.append(temp)
 
     return output
 
 
-def __export_to_csv(sgas_results: List[List], amfg_results: List[List], output_file: str):
+def __export_to_csv(
+    sgas_results: List[List], amfg_results: List[List], output_file: str
+):
     # Convert into Pandas DataFrames
-    sgas_df = pd.DataFrame.from_records(sgas_results, columns=["DATE", "MAX_DISTANCE_SGAS"])
-    amfg_df = pd.DataFrame.from_records(amfg_results, columns=["DATE", "MAX_DISTANCE_AMFG"])
+    sgas_df = pd.DataFrame.from_records(
+        sgas_results, columns=["DATE", "MAX_DISTANCE_SGAS"]
+    )
+    amfg_df = pd.DataFrame.from_records(
+        amfg_results, columns=["DATE", "MAX_DISTANCE_AMFG"]
+    )
 
     # Merge them together
     df = pd.merge(sgas_df, amfg_df, on="DATE")
@@ -104,17 +122,17 @@ def __export_to_csv(sgas_results: List[List], amfg_results: List[List], output_f
 
 
 def __calculate_well_coordinates(well_name: str):
-    '''
+    """
     Find coordinates of injection point
-    '''
+    """
     pass
 
 
 def main():
-    '''
+    """
     Calculate plume extent using EGRID and UNRST-files. Calculated for SGAS
     and AMFG. Output is plume extent per date written to a CSV file.
-    '''
+    """
     args = __make_parser().parse_args()
 
     injxy = __calculate_well_coordinates(args.well_name)
