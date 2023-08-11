@@ -62,29 +62,28 @@ def __neigh_nodes(x):  # If all the four nodes of the cell are not masked we cou
 
 
 def calc_plume_area(path, rskey):
-    var = "max_" + rskey
-    print("***" + rskey + "***")
+    print("*** Calculating plume area for: " + rskey + " ***")
 
-    formation = np.array(__find_formations(path, rskey))
-    print("Formations found: ", formation)
+    formations = np.array(__find_formations(path, rskey))
+    print("Formations found: ", formations)
 
-    year = np.array(__find_dates(path, formation, rskey))
-    print("Dates found: ", year)
+    dates = np.array(__find_dates(path, formations, rskey))
+    print("Dates found: ", dates)
 
     # area_array = (product(formation, var, year))  # Not used anymore?
 
+    var = "max_" + rskey
     dict_out = []
-    for fm in formation:
-        for y in year:
-            path_file = glob.glob(path + fm + "--" + var + "--" + y + "*.gri")
-            # print("Path_file: ", path_file)
-            # path_file = path + fm + "--" + var + "--" + y + "0101.gri"
+    for fm in formations:
+        for date in dates:
+            path_file = glob.glob(path + fm + "--" + var + "--" + date + "*.gri")
+            # path_file = path + fm + "--" + var + "--" + date + "0101.gri"
             mysurf = xtgeo.surface_from_file(path_file[0])
             use_nodes = np.ma.nonzero(mysurf.values)  # Indexes of the existing nodes
             use_nodes = set(list(tuple(zip(use_nodes[0], use_nodes[1]))))
             all_neigh_nodes = list(map(__neigh_nodes, use_nodes))
             test0 = [xx.issubset(use_nodes) for xx in all_neigh_nodes]
-            dict_out_temp = [float(y), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
+            dict_out_temp = [float(date), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
             dict_out.append(dict_out_temp)
 
     return dict_out
@@ -116,11 +115,11 @@ def main():
 
     sgas_results = calc_plume_area(path, "SGAS")  # Or sgas
     if sgas_results:
-        print("Sgas areas sucessfully collected.")
+        print("SGAS plume areas sucessfully collected.")
 
     amfg_results = calc_plume_area(path, "AMFG")  # Or amfg
     if amfg_results:
-        print("Amfg areas sucessfully collected.")
+        print("AMFG plume areas sucessfully collected.")
 
     sgas_df = __convert_to_data_frame(sgas_results, "SGAS")
     amfg_df = __convert_to_data_frame(amfg_results, "AMFG")
