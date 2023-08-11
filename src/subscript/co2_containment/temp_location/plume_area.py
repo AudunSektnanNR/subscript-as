@@ -17,6 +17,7 @@ import xtgeo
 import numpy as np
 import pathlib
 import argparse
+from typing import List, Tuple
 
 
 def __make_parser():
@@ -27,7 +28,7 @@ def __make_parser():
     return parser
 
 
-def __find_formations(search_path, rskey):
+def __find_formations(search_path: str, rskey: str) -> Tuple[np.ndarray, str]:
     # Try different capitalizations of rskey:
     file_names_1 = glob.glob(search_path + "*max_" + rskey + "*.gri")
     file_names_2 = glob.glob(search_path + "*max_" + rskey.lower() + "*.gri")
@@ -52,10 +53,10 @@ def __find_formations(search_path, rskey):
         else:
             formation_list.append(fm_name)
 
-    return formation_list, rskey_updated
+    return np.array(formation_list), rskey_updated
 
 
-def __find_years(search_path, fm, rskey):
+def __find_years(search_path: str, fm: np.ndarray, rskey: str) -> List[str]:
     years_list = []
 
     for file in glob.glob(search_path + fm[0] + "*max_" + rskey + "*.gri"):
@@ -70,42 +71,43 @@ def __find_years(search_path, fm, rskey):
     return years_list
 
 
-def __neigh_nodes(x):  # If all the four nodes of the cell are not masked we count the area
+def __neigh_nodes(x: Tuple[np.int64, np.int64]) -> set:
+    # If all the four nodes of the cell are not masked we count the area
     sq_vert = {(x[0] + 1, x[1]), (x[0], int(x[1]) + 1), (x[0] + 1, x[1] + 1)}
 
     return sq_vert
 
 
-def calc_plume_area(path, rskey):
+def calc_plume_area(path: str, rskey: str) -> List[List[float]]:
+    '''
+    Finds plume area for each formation and year for a given rskey (for instance
+    SGAS or AMFG). The plume areas are found using data from surface files (.gri).
+    '''
     print("*** Calculating plume area for: " + rskey + " ***")
 
-    formations, rskey_updated = np.array(__find_formations(path, rskey))
+    formations, rskey_updated = __find_formations(path, rskey)
     print("Formations found: ", formations)
 
     years = np.array(__find_years(path, formations, rskey_updated))
     print("Dates found: ", years)
 
-    # area_array = (product(formation, var, year))  # Not used anymore?
-
     var = "max_" + rskey_updated
-    dict_out = []
+    list_out = []
     for fm in formations:
         for year in years:
-            print(path + fm + "--" + var + "--" + year + "*.gri")
             path_file = glob.glob(path + fm + "--" + var + "--" + year + "*.gri")
-            # path_file = path + fm + "--" + var + "--" + year + "0101.gri"
             mysurf = xtgeo.surface_from_file(path_file[0])
             use_nodes = np.ma.nonzero(mysurf.values)  # Indexes of the existing nodes
             use_nodes = set(list(tuple(zip(use_nodes[0], use_nodes[1]))))
             all_neigh_nodes = list(map(__neigh_nodes, use_nodes))
             test0 = [xx.issubset(use_nodes) for xx in all_neigh_nodes]
-            dict_out_temp = [float(year), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
-            dict_out.append(dict_out_temp)
+            list_out_temp = [float(year), float(sum(t * mysurf.xinc * mysurf.yinc for t in test0)), fm]
+            list_out.append(list_out_temp)
 
-    return dict_out
+    return list_out
 
 
-def __read_args():
+def __read_args() -> Tuple[str, str]:
     args = __make_parser().parse_args()
     input_path = args.input
     output_path = args.output
@@ -117,7 +119,7 @@ def __read_args():
     return input_path, output_path
 
 
-def __convert_to_data_frame(results, rskey):
+def __convert_to_data_frame(results: List[List[float]], rskey: str) -> pd.DataFrame:
     # Convert into Pandas DataFrame
     df = pd.DataFrame.from_records(results, columns=["DATE", "AREA_"+rskey, "FORMATION_"+rskey])
     df = df.pivot(index="DATE", columns="FORMATION_"+rskey, values="AREA_"+rskey)
@@ -128,6 +130,11 @@ def __convert_to_data_frame(results, rskey):
 
 
 def main():
+    '''
+    Reads directory of input surface files (.gri) and calculates plume area
+    for SGAS and AMFG per formation and year. Collects the results into a CSV
+    file.
+    '''
     input_path, output_path = __read_args()
 
     sgas_results = calc_plume_area(input_path, "sgas")
