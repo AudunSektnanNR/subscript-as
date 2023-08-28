@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+from pathlib import Path
 import sys
 from typing import List, Tuple
 
@@ -42,7 +43,7 @@ def __make_parser() -> argparse.ArgumentParser:
 
 def calc_plume_extents(
     case: str,
-    injxy: Tuple[int, int],
+    injxy: Tuple[float, float],
     threshold_sgas: float = DEFAULT_THRESHOLD_SGAS,
     threshold_amfg: float = DEFAULT_THRESHOLD_AMFG,
 ) -> Tuple[List[List], List[List]]:
@@ -115,13 +116,25 @@ def __export_to_csv(
     df.to_csv(output_file, index=False)
 
 
-def __calculate_well_coordinates(well_name: str) -> Tuple[int, int]:  # float?
+def __calculate_well_coordinates(case: str, well_name: str) -> Tuple[float, float]:
     """
     Find coordinates of injection point
     """
-    # NBNB-AS: TODO
-    return (0.0, 0.0)
-    pass
+    p = Path(case).parents[2]
+    p2 = p / "share" / "results" / "wells" / "well_picks.csv"
+
+    df = pd.read_csv(p2)
+    df = df[df["WELL"] == well_name]
+
+    df = df[df["X_UTME"].notna()]
+    df = df[df["Y_UTMN"].notna()]
+
+    max_id = df["MD"].idxmax()
+    max_md_row = df.loc[max_id]
+    x = max_md_row["X_UTME"]
+    y = max_md_row["Y_UTMN"]
+
+    return (x, y)
 
 
 def main():
@@ -131,7 +144,10 @@ def main():
     """
     args = __make_parser().parse_args()
 
-    injxy = __calculate_well_coordinates(args.well_name)
+    injxy = __calculate_well_coordinates(
+        args.case,
+        args.well_name,
+    )
 
     (sgas_results, amfg_results) = calc_plume_extents(
         args.case,
