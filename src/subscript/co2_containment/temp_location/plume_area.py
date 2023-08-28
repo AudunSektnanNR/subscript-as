@@ -91,6 +91,8 @@ def calc_plume_area(path: str, rskey: str) -> List[List[float]]:
     """
     print("*** Calculating plume area for: " + rskey + " ***")
 
+    if path[-1] != "/":
+        path = path + "/"
     formations, rskey_updated = __find_formations(path, rskey)
     print("Formations found: ", formations)
 

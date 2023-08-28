@@ -115,10 +115,12 @@ def __export_to_csv(
     df.to_csv(output_file, index=False)
 
 
-def __calculate_well_coordinates(well_name: str):
+def __calculate_well_coordinates(well_name: str) -> Tuple[int, int]:  # float?
     """
     Find coordinates of injection point
     """
+    # NBNB-AS: TODO
+    return (0.0, 0.0)
     pass
 
 
