@@ -15,7 +15,7 @@ import glob
 import os
 import pathlib
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -34,7 +34,7 @@ def __make_parser():
     return parser
 
 
-def __find_formations(search_path: str, rskey: str) -> Tuple[np.ndarray, str]:
+def __find_formations(search_path: str, rskey: str) -> Optional[Tuple[np.ndarray, str]]:
     # Try different capitalizations of rskey:
     file_names_1 = glob.glob(search_path + "*max_" + rskey + "*.gri")
     file_names_2 = glob.glob(search_path + "*max_" + rskey.lower() + "*.gri")
@@ -47,8 +47,8 @@ def __find_formations(search_path: str, rskey: str) -> Tuple[np.ndarray, str]:
     elif file_names_3:
         rskey_updated = rskey.upper()
     else:
-        text = "No surface files found."
-        raise FileNotFoundError(text)
+        print("No surface files found.")
+        return None
 
     formation_list = []
     for file in glob.glob(search_path + "*max_" + rskey_updated + "*.gri"):
@@ -84,7 +84,7 @@ def __neigh_nodes(x: Tuple[np.int64, np.int64]) -> set:
     return sq_vert
 
 
-def calc_plume_area(path: str, rskey: str) -> List[List[float]]:
+def calc_plume_area(path: str, rskey: str) -> Optional[List[List[float]]]:
     """
     Finds plume area for each formation and year for a given rskey (for instance
     SGAS or AMFG). The plume areas are found using data from surface files (.gri).
@@ -93,8 +93,12 @@ def calc_plume_area(path: str, rskey: str) -> List[List[float]]:
 
     if path[-1] != "/":
         path = path + "/"
-    formations, rskey_updated = __find_formations(path, rskey)
-    print("Formations found: ", formations)
+    out = __find_formations(path, rskey)
+    if not out:
+        return None
+    else:
+        formations, rskey_updated = out
+        print("Formations found: ", formations)
 
     years = np.array(__find_years(path, formations, rskey_updated))
     print("Dates found: ", years)
@@ -151,19 +155,28 @@ def main():
     """
     input_path, output_path = __read_args()
 
+    sgas_df, amfg_df, ymf2_df = None, None, None
     sgas_results = calc_plume_area(input_path, "sgas")
     if sgas_results:
         print("SGAS plume areas sucessfully collected.")
+        sgas_df = __convert_to_data_frame(sgas_results, "SGAS")
 
     amfg_results = calc_plume_area(input_path, "amfg")
     if amfg_results:
         print("AMFG plume areas sucessfully collected.")
+        amfg_df = __convert_to_data_frame(amfg_results, "AMFG")
 
-    sgas_df = __convert_to_data_frame(sgas_results, "SGAS")
-    amfg_df = __convert_to_data_frame(amfg_results, "AMFG")
+    ymf2_results = calc_plume_area(input_path, "ymf2")
+    if ymf2_results:
+        print("YMF2 plume areas sucessfully collected.")
+        ymf2_df = __convert_to_data_frame(ymf2_results, "YMF2")
 
     # Merge them together
-    df = pd.merge(sgas_df, amfg_df)
+    if sgas_df is not None:
+        if amfg_df is not None:
+            df = pd.merge(sgas_df, amfg_df)
+        elif ymf2_df is not None:
+            df = pd.merge(sgas_df, ymf2_df)
 
     # Export to CSV
     df.to_csv(output_path, index=False)
