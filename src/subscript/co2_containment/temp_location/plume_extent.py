@@ -53,9 +53,9 @@ def calc_plume_extents(
     injxy: Tuple[float, float],
     threshold_sgas: float = DEFAULT_THRESHOLD_SGAS,
     threshold_amfg: float = DEFAULT_THRESHOLD_AMFG,
-) -> Tuple[List[List], List[List]]:
+) -> Tuple[List[List], List[List], str]:
     """
-    Find plume extents per date for SGAS and AMFG.
+    Find plume extents per date for SGAS and AMFG/YMF2.
     """
     grid = EclGrid("{}.EGRID".format(case))
     unrst = EclFile("{}.UNRST".format(case))
@@ -72,12 +72,19 @@ def calc_plume_extents(
     )
     print(sgas_results)
 
-    amfg_results = __find_max_distances_per_time_step(
-        "AMFG", threshold_amfg, unrst, dist
-    )
+    if "AMFG" in unrst:
+        amfg_results = __find_max_distances_per_time_step(
+            "AMFG", threshold_amfg, unrst, dist
+        )
+        amfg_key = "AMFG"
+    elif "YMF2" in unrst:
+        amfg_results = __find_max_distances_per_time_step(
+            "YMF2", threshold_amfg, unrst, dist
+        )
+        amfg_key = "YMF2"
     print(amfg_results)
 
-    return (sgas_results, amfg_results)
+    return (sgas_results, amfg_results, amfg_key)
 
 
 def __find_max_distances_per_time_step(
@@ -106,14 +113,14 @@ def __find_max_distances_per_time_step(
 
 
 def __export_to_csv(
-    sgas_results: List[List], amfg_results: List[List], output_file: str
+    sgas_results: List[List], amfg_results: List[List], amfg_key: str, output_file: str
 ):
     # Convert into Pandas DataFrames
     sgas_df = pd.DataFrame.from_records(
         sgas_results, columns=["DATE", "MAX_DISTANCE_SGAS"]
     )
     amfg_df = pd.DataFrame.from_records(
-        amfg_results, columns=["DATE", "MAX_DISTANCE_AMFG"]
+        amfg_results, columns=["DATE", "MAX_DISTANCE_" + amfg_key]
     )
 
     # Merge them together
@@ -147,7 +154,7 @@ def __calculate_well_coordinates(case: str, well_name: str) -> Tuple[float, floa
 def main():
     """
     Calculate plume extent using EGRID and UNRST-files. Calculated for SGAS
-    and AMFG. Output is plume extent per date written to a CSV file.
+    and AMFG/YMF2. Output is plume extent per date written to a CSV file.
     """
     args = __make_parser().parse_args()
 
@@ -162,14 +169,14 @@ def main():
         print("Invalid input. Specify either --well_name or provide both --x_coord and --y_coord.")
         exit()
 
-    (sgas_results, amfg_results) = calc_plume_extents(
+    (sgas_results, amfg_results, amfg_key) = calc_plume_extents(
         args.case,
         injxy,
         args.threshold_sgas,
         args.threshold_amfg,
     )
 
-    __export_to_csv(sgas_results, amfg_results, args.output)
+    __export_to_csv(sgas_results, amfg_results, amfg_key, args.output)
 
     return 0
 
