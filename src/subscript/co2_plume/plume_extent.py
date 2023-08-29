@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
@@ -18,14 +18,19 @@ def __make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Calculate plume extent (distance)")
     parser.add_argument("case", help="Name of Eclipse case")
     parser.add_argument(
-        "--well_name", help="Name of injection well to calculate plume extent from",
+        "--well_name",
+        help="Name of injection well to calculate plume extent from",
         default=None,
     )
     parser.add_argument(
-        "--x_coord", help="Value of x coordinate to calculate plume extent from. Can be used instead of --well_name."
+        "--x_coord",
+        help="Value of x coordinate to calculate plume extent from. \
+            Can be used instead of --well_name.",
     )
     parser.add_argument(
-        "--y_coord", help="Value of y coordinate to calculate plume extent from. Can be used instead of --well_name."
+        "--y_coord",
+        help="Value of y coordinate to calculate plume extent from. \
+            Can be used instead of --well_name.",
     )
     parser.add_argument(
         "--output",
@@ -166,7 +171,10 @@ def main():
             args.well_name,
         )
     else:
-        print("Invalid input. Specify either --well_name or provide both --x_coord and --y_coord.")
+        print(
+            "Invalid input. Specify either --well_name or \
+            provide both --x_coord and --y_coord."
+        )
         exit()
 
     (sgas_results, amfg_results, amfg_key) = calc_plume_extents(
