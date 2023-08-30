@@ -3,7 +3,7 @@
 import argparse
 import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -58,7 +58,7 @@ def calc_plume_extents(
     injxy: Tuple[float, float],
     threshold_sgas: float = DEFAULT_THRESHOLD_SGAS,
     threshold_amfg: float = DEFAULT_THRESHOLD_AMFG,
-) -> Tuple[List[List], List[List], str]:
+) -> Tuple[List[List], Optional[List[List]], str]:
     """
     Find plume extents per date for SGAS and AMFG/YMF2.
     """
@@ -87,6 +87,9 @@ def calc_plume_extents(
             "YMF2", threshold_amfg, unrst, dist
         )
         amfg_key = "YMF2"
+    else:
+        amfg_results = None
+        amfg_key = "-"
     print(amfg_results)
 
     return (sgas_results, amfg_results, amfg_key)
@@ -118,31 +121,38 @@ def __find_max_distances_per_time_step(
 
 
 def __export_to_csv(
-    sgas_results: List[List], amfg_results: List[List], amfg_key: str, output_file: str
+    sgas_results: List[List], amfg_results: Optional[List[List]], amfg_key: str, output_file: str
 ):
     # Convert into Pandas DataFrames
     sgas_df = pd.DataFrame.from_records(
         sgas_results, columns=["DATE", "MAX_DISTANCE_SGAS"]
     )
-    amfg_df = pd.DataFrame.from_records(
-        amfg_results, columns=["DATE", "MAX_DISTANCE_" + amfg_key]
-    )
+    if amfg_results is not None:
+        amfg_df = pd.DataFrame.from_records(
+            amfg_results, columns=["DATE", "MAX_DISTANCE_" + amfg_key]
+        )
 
-    # Merge them together
-    df = pd.merge(sgas_df, amfg_df, on="DATE")
+        # Merge them together
+        df = pd.merge(sgas_df, amfg_df, on="DATE")
+    else:
+        df = sgas_df
 
     # Export to CSV
     df.to_csv(output_file, index=False)
 
 
-def __calculate_well_coordinates(case: str, well_name: str) -> Tuple[float, float]:
+def __calculate_well_coordinates(case: str, well_name: str, well_picks_path: Optional[str] = None) -> Tuple[float, float]:
     """
     Find coordinates of injection point
     """
-    p = Path(case).parents[2]
-    p2 = p / "share" / "results" / "wells" / "well_picks.csv"
+    if well_picks_path is None:
+        p = Path(case).parents[2]
+        p2 = p / "share" / "results" / "wells" / "well_picks.csv"
+    else:
+        p2 = Path(well_picks_path)
 
     df = pd.read_csv(p2)
+
     df = df[df["WELL"] == well_name]
 
     df = df[df["X_UTME"].notna()]
