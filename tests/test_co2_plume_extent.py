@@ -5,8 +5,8 @@ import pytest
 
 from subscript.co2_plume.plume_extent import (
     __calculate_well_coordinates,
-    calc_plume_extents,
     __export_to_csv,
+    calc_plume_extents,
 )
 
 

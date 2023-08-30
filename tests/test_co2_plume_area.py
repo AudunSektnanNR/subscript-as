@@ -1,8 +1,6 @@
 import pytest
 
-from subscript.co2_plume.plume_area import (
-    calc_plume_area,
-)
+from subscript.co2_plume.plume_area import calc_plume_area
 
 
 def test_calc_plume_area():
