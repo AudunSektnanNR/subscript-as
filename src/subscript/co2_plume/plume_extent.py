@@ -121,7 +121,10 @@ def __find_max_distances_per_time_step(
 
 
 def __export_to_csv(
-    sgas_results: List[List], amfg_results: Optional[List[List]], amfg_key: str, output_file: str
+    sgas_results: List[List],
+    amfg_results: Optional[List[List]],
+    amfg_key: str,
+    output_file: str,
 ):
     # Convert into Pandas DataFrames
     sgas_df = pd.DataFrame.from_records(
@@ -141,7 +144,9 @@ def __export_to_csv(
     df.to_csv(output_file, index=False)
 
 
-def __calculate_well_coordinates(case: str, well_name: str, well_picks_path: Optional[str] = None) -> Tuple[float, float]:
+def __calculate_well_coordinates(
+    case: str, well_name: str, well_picks_path: Optional[str] = None
+) -> Tuple[float, float]:
     """
     Find coordinates of injection point
     """
