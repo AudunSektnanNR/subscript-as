@@ -12,8 +12,8 @@ Calculates the area of the CO\ :sub:`2` plume for each formation and time step, 
 Output is a table on CSV format.
 
 
-CSV file example
-----------------------------
+CSV file example - plume area
+-----------------------------
 Example of how the plume area output CSV file is structured:
 
 .. list-table:: CSV file of CO2 plume area (m^2)
@@ -62,8 +62,8 @@ Calculates the maximum lateral distance of the CO\ :sub:`2` plume from a given l
 
 Output is a table on CSV format.
 
-CSV file example
-----------------------------
+CSV file example - plume extent
+-------------------------------
 Example of how the plume extent output CSV file is structured:
 
 .. list-table:: CSV file of CO2 plume extent (m)
