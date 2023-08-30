@@ -175,11 +175,12 @@ def main():
     if sgas_df is not None:
         if amfg_df is not None:
             df = pd.merge(sgas_df, amfg_df)
+            df.to_csv(output_path, index=False)
         elif ymf2_df is not None:
             df = pd.merge(sgas_df, ymf2_df)
-
-    # Export to CSV
-    df.to_csv(output_path, index=False)
+            df.to_csv(output_path, index=False)
+        else:
+            sgas_df.to_csv(output_path, index=False)
 
     return 0
 
