@@ -253,7 +253,7 @@ def process_args() -> argparse.Namespace:
     """
     Process arguments and do some minor conversions.
 
-   Returns:
+    Returns:
         argparse.Namespace
     """
     args = get_parser().parse_args()
